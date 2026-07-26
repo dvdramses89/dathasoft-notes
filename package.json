@@ -1,0 +1,13 @@
+{
+  "name": "dathasoft-notes",
+  "version": "0.0.0",
+  "private": true,
+  "description": "DTNotes — repositorio de documentación y notas del equipo DathaSoft",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=18"
+  }
+}

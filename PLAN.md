@@ -1,0 +1,95 @@
+# Plan de desarrollo — DTNotes
+
+Plan de desarrollo **local**, por **tareas pequeñas y concretas**, para ir avanzando y **validando poco a poco en la PC**. Reglas del plan:
+
+- Se entrega y ejecuta **una tarea (o subtarea) cada vez**, esperando tu validación local antes de seguir.
+- Cada fase termina en un estado **probable en local** y con un **commit + push a GitHub** (hito).
+- **El despliegue en Zeabur va al final del todo** (Fase 11); hasta entonces, todo corre en local.
+
+Leyenda: `[ ]` pendiente · `[~]` en curso · `[x]` hecho y validado.
+
+---
+
+## Fase 0 — Repositorio y control de versiones
+Repositorio remoto (ya creado): `https://github.com/dvdramses89/dathasoft-notes.git`
+- [ ] 0.1 Inicializar git local + `.gitignore` (node_modules, dist, `.env`…) + `README.md`.
+- [ ] 0.2 Conectar el repo local con el remoto existente como `origin` y primer push a `main`.
+- [ ] 0.3 Estructura monorepo vacía con workspaces: `apps/web`, `apps/api`, `packages/shared`, `package.json` raíz.
+- **Validación**: repo en GitHub con la estructura base. *(Commit + push)*
+
+## Fase 1 — Andamiaje levantable en local (sin features)
+
+### Tarea 1.1 — Backend API (NestJS)
+- [ ] 1.1.a Scaffold de la API NestJS con endpoint `GET /api/health`, arranca en local.
+- [ ] 1.1.b Config de entorno de la API: `@nestjs/config` + `.env` / `.env.example` (`PORT`, `NODE_ENV`…).
+- **Validación**: la API arranca en local y responde `/api/health`. *(Commit + push)*
+
+### Tarea 1.2 — Frontend genérico conectado al backend (React + Vite + TS)
+- [ ] 1.2.a Scaffold de la web React + Vite + TS mínima ("DTNotes"), arranca en local.
+- [ ] 1.2.b Config `.env` / `.env.example` con `VITE_API_URL` + cliente HTTP que llama a `/api/health` y pinta el estado del backend.
+- **Validación**: la web arranca en local y muestra que se conecta con la API. *(Commit + push)*
+
+## Fase 2 — Base de datos + autenticación
+- [ ] 2.1 Postgres local + `prisma init` + `DATABASE_URL` en `.env`.
+- [ ] 2.2 Modelo `User` en Prisma + migración.
+- [ ] 2.3 API auth: registro + login con JWT + guard de rutas protegidas.
+- [ ] 2.4 Web: pantallas de registro/login, guardado de token, ruta protegida.
+- **Validación**: registrarse, iniciar sesión y entrar a una ruta protegida. *(Commit + push)*
+
+## Fase 3 — Categorías (árbol de carpetas estilo Craft)
+- [ ] 3.1 Modelo `Category` (jerárquico: `parentId`, `position`) + migración + CRUD REST.
+- [ ] 3.2 Web: sidebar en árbol con crear / renombrar / mover / borrar y orden manual.
+- **Validación**: gestionar carpetas y subcarpetas en el sidebar. *(Commit + push)*
+
+## Fase 4 — Documentos + editor BlockNote
+- [ ] 4.1 Modelo `Document` + CRUD REST (guarda `contentJson` y `contentText`).
+- [ ] 4.2 Web: editor **BlockNote** para crear/editar/guardar un documento dentro de una carpeta.
+- [ ] 4.3 Comprobar Markdown y **código con resaltado multi-lenguaje** en el editor.
+- **Validación**: crear un documento en una carpeta, escribir texto enriquecido y código, guardarlo y reabrirlo. *(Commit + push)*
+
+## Fase 5 — Tags + buscador global
+- [ ] 5.1 Modelos `Tag` + `DocumentTag` + API para asignar/quitar tags.
+- [ ] 5.2 Web: asignar tags a documentos y filtrar por tags.
+- [ ] 5.3 **Buscador global**: búsqueda de texto (título + `contentText`, full-text de Postgres) combinable con tags.
+- **Validación**: etiquetar documentos y encontrarlos con el buscador. *(Commit + push)*
+
+## Fase 6 — Favoritos + Papelera
+- [ ] 6.1 **Favoritos**: modelo `Favorite` + API + sección "Favoritos" en el sidebar.
+- [ ] 6.2 **Papelera**: borrado suave (`deletedAt`) en documentos + API restaurar / borrar definitivo + sección "Papelera" en el sidebar.
+- **Validación**: marcar favoritos y enviar/restaurar documentos de la papelera. *(Commit + push)*
+
+## Fase 7 — Referencias externas en documentos
+- [ ] 7.1 Bloque custom BlockNote: **enlace web**.
+- [ ] 7.2 Bloque custom: **embed de YouTube**.
+- [ ] 7.3 Bloque custom: **referencia a documento interno** del repositorio.
+- [ ] 7.4 Bloque custom: **adjunto/referencia de archivo** (tabla `Attachment` + almacenamiento local vía `STORAGE_DRIVER=local`).
+- **Validación**: insertar cada tipo de referencia en un documento y que funcione. *(Commit + push por subtarea)*
+
+## Fase 8 — Importar y exportar
+- [ ] 8.1 **Exportar** documento a **Markdown**.
+- [ ] 8.2 **Exportar** documento a **PDF**.
+- [ ] 8.3 **Importar** `.md` / `.txt` → documento, eligiendo la **subcarpeta destino**.
+- [ ] 8.4 **Importar** `.docx` → documento (conversión), eligiendo subcarpeta destino.
+- **Validación**: exportar en ambos formatos e importar los tres formatos a la carpeta elegida. *(Commit + push)*
+
+## Fase 9 — Colectivos y compartición
+- [ ] 9.1 Modelos `Collective` + `CollectiveMember` + API (crear colectivo, asignar usuarios).
+- [ ] 9.2 `DocumentShare` + `CategoryShare` + API para compartir documento suelto o carpeta (subárbol) con permiso read/edit.
+- [ ] 9.3 Web: UI para compartir + sección **"Documentos compartidos"** en el sidebar.
+- **Validación**: compartir un documento y una carpeta con un colectivo y verlos desde otro usuario. *(Commit + push)*
+
+## Fase 10 — Pulido final
+- [ ] 10.1 Repaso UX del sidebar estilo Craft, estados vacíos y manejo de errores.
+- [ ] 10.2 Repaso de autorización (owner / colectivo) y validaciones de entrada.
+- **Validación**: recorrido completo de la app en local sin fisuras. *(Commit + push)*
+
+## Fase 11 — Despliegue en Zeabur (al final del todo)
+- [ ] 11.1 Preparar variables de entorno de producción (`.env.production` / secrets en Zeabur; `STORAGE_DRIVER` a objeto).
+- [ ] 11.2 Crear proyecto en Zeabur + servicio **PostgreSQL**.
+- [ ] 11.3 Desplegar **API** (build + migraciones Prisma en prod).
+- [ ] 11.4 Desplegar **Web** (build de Vite, `VITE_API_URL` apuntando a la API).
+- [ ] 11.5 Verificación end-to-end en producción.
+
+---
+
+> Cuando terminemos "Historial de versiones" (aparcado), se insertará como fase propia antes del pulido final.

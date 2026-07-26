@@ -1,0 +1,32 @@
+# Dependencias
+node_modules/
+.pnp
+.pnp.js
+
+# Builds / salidas
+dist/
+build/
+out/
+.vite/
+coverage/
+
+# Entornos (nunca commitear .env reales; sí el ejemplo)
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Prisma (cliente generado)
+**/generated/
+apps/api/prisma/*.db
+
+# Sistema / editor
+.DS_Store
+Thumbs.db
+*.local
