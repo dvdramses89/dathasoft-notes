@@ -41,19 +41,23 @@ dathasoft-notes/
 ```
 User          id · email · passwordHash · name · createdAt
 
-Category      id · name · color · parentId(→Category|null) · position · ownerId
+Category      id · name · icon · color · parentId(→Category|null) · position · ownerId · deletedAt(|null → papelera)
                 └─ ÁRBOL de carpetas/subcarpetas (estilo Craft), N niveles, orden manual (position)
+                   icon: reservado para funcionalidad futura (icono de carpeta)
 
-Document      id · title · contentJson(JSONB, doc de BlockNote) · contentText(búsqueda)
-                · categoryId · ownerId · createdAt · updatedAt · deletedAt(|null → papelera)
+Document      id · title · contentJson(JSONB, doc de BlockNote) · contentText · searchVector(tsvector → buscador)
+                · categoryId(|null → raíz) · position · ownerId · createdAt · updatedAt · deletedAt(|null → papelera)
 
 Tag           id · name · color · ownerId
 DocumentTag   documentId · tagId            (N:M → búsqueda enriquecida por tags)
 
 Favorite      userId · documentId · createdAt    (favoritos por usuario)
 
-Attachment    id · documentId(|null) · fileName · mimeType · storageRef · ownerId
-                └─ archivos importados/referenciados (docx, pdf, etc.)
+Attachment    id · documentId(|null) · fileName · mimeType · sizeBytes · storageKey · ownerId
+                └─ archivos importados/referenciados (docx, pdf…); storageKey agnóstico, backend por STORAGE_DRIVER
+
+DocumentReference  id · sourceDocumentId · targetDocumentId · createdAt   (unique source+target)
+                └─ referencias entre documentos internos (integridad + backlinks); enlaces web/YouTube van en contentJson
 
 Collective    id · name · description · ownerId
 CollectiveMember  collectiveId · userId · role(member|admin)

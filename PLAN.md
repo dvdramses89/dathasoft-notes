@@ -10,12 +10,12 @@ Leyenda: `[ ]` pendiente · `[~]` en curso · `[x]` hecho y validado.
 
 ---
 
-## Fase 0 — Repositorio y control de versiones
+## Fase 0 — Repositorio y control de versiones ✅
 Repositorio remoto (ya creado): `https://github.com/dvdramses89/dathasoft-notes.git`
-- [ ] 0.1 Inicializar git local + `.gitignore` (node_modules, dist, `.env`…) + `README.md`.
-- [ ] 0.2 Conectar el repo local con el remoto existente como `origin` y primer push a `main`.
-- [ ] 0.3 Estructura monorepo vacía con workspaces: `apps/web`, `apps/api`, `packages/shared`, `package.json` raíz.
-- **Validación**: repo en GitHub con la estructura base. *(Commit + push)*
+- [x] 0.1 Inicializar git local + `.gitignore` (node_modules, dist, `.env`…) + `README.md`.
+- [x] 0.2 Conectar el repo local con el remoto existente como `origin` y primer push a `main` (conservado el `LICENSE` remoto vía rebase).
+- [x] 0.3 Estructura monorepo vacía con workspaces: `apps/web`, `apps/api`, `packages/shared`, `package.json` raíz.
+- **Validación**: repo en GitHub con la estructura base. ✅ *(commit `942e1cb` pusheado a `main`)*
 
 ## Fase 1 — Andamiaje levantable en local (sin features)
 
@@ -30,11 +30,13 @@ Repositorio remoto (ya creado): `https://github.com/dvdramses89/dathasoft-notes.
 - **Validación**: la web arranca en local y muestra que se conecta con la API. *(Commit + push)*
 
 ## Fase 2 — Base de datos + autenticación
-- [ ] 2.1 Postgres local + `prisma init` + `DATABASE_URL` en `.env`.
-- [ ] 2.2 Modelo `User` en Prisma + migración.
+- [x] 2.1 Postgres local vía **Docker Compose** + Prisma + `DATABASE_URL` en `apps/api/.env`.
+- [x] 2.2 **Esquema COMPLETO** (13 tablas + 2 enums) + **migración inicial** aplicada + buscador full-text (`searchVector` generado + índice GIN, config `spanish`). Verificado con prueba funcional.
 - [ ] 2.3 API auth: registro + login con JWT + guard de rutas protegidas.
 - [ ] 2.4 Web: pantallas de registro/login, guardado de token, ruta protegida.
 - **Validación**: registrarse, iniciar sesión y entrar a una ruta protegida. *(Commit + push)*
+
+> Nota: se decidió crear el esquema completo de una vez. Por eso, en las Fases 3–9 **las tablas ya existen**: esas fases solo construyen la **API + UI** sobre el modelo ya migrado (no vuelven a tocar el esquema salvo ajustes puntuales).
 
 ## Fase 3 — Categorías (árbol de carpetas estilo Craft)
 - [ ] 3.1 Modelo `Category` (jerárquico: `parentId`, `position`) + migración + CRUD REST.

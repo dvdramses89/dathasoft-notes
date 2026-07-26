@@ -1,0 +1,230 @@
+// ============================================================
+// DTNotes — Esquema de base de datos (Prisma + PostgreSQL)
+// Modelo aprobado. La columna full-text `searchVector` (tsvector)
+// y su indice GIN se anaden en la migracion como SQL crudo
+// (Prisma no modela columnas generadas tsvector de forma nativa).
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- Enums ----------
+
+enum MemberRole {
+  MEMBER
+  ADMIN
+}
+
+enum SharePermission {
+  READ
+  EDIT
+}
+
+// ---------- Usuarios ----------
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  email        String   @unique
+  passwordHash String
+  name         String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  categories  Category[]
+  documents   Document[]
+  tags        Tag[]
+  favorites   Favorite[]
+  attachments Attachment[]
+  collectives Collective[] // colectivos creados por este usuario
+  memberships CollectiveMember[]
+}
+
+// ---------- Categorias (arbol de carpetas estilo Craft) ----------
+
+model Category {
+  id        String    @id @default(uuid()) @db.Uuid
+  name      String
+  icon      String? // reservado para funcionalidad futura (icono de carpeta)
+  color     String?
+  position  Int       @default(0) // orden manual entre hermanas
+  parentId  String?   @db.Uuid // null = carpeta raiz
+  ownerId   String    @db.Uuid
+  deletedAt DateTime? // papelera (soft-delete)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  parent    Category?       @relation("CategoryTree", fields: [parentId], references: [id], onDelete: Cascade)
+  children  Category[]      @relation("CategoryTree")
+  owner     User            @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  documents Document[]
+  shares    CategoryShare[]
+
+  @@index([ownerId, parentId, position])
+}
+
+// ---------- Documentos / notas ----------
+
+model Document {
+  id          String    @id @default(uuid()) @db.Uuid
+  title       String
+  contentJson Json // contenido del editor BlockNote
+  contentText String    @default("") // texto plano derivado, para busqueda
+  // Buscador global: columna GENERADA (title + contentText) definida en la migracion como SQL crudo.
+  // @default(dbgenerated()) evita que Prisma la trate como DEFAULT y genere migraciones fantasma.
+  searchVector Unsupported("tsvector")? @default(dbgenerated())
+  categoryId  String?   @db.Uuid // null = documento en raiz
+  position    Int       @default(0) // orden manual dentro de la carpeta
+  ownerId     String    @db.Uuid
+  deletedAt   DateTime? // papelera (soft-delete)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  category       Category?           @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  owner          User                @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  tags           DocumentTag[]
+  favorites      Favorite[]
+  attachments    Attachment[]
+  shares         DocumentShare[]
+  referencesFrom DocumentReference[] @relation("RefSource")
+  referencesTo   DocumentReference[] @relation("RefTarget")
+
+  @@index([ownerId, categoryId, position])
+  @@index([searchVector], type: Gin)
+}
+
+// ---------- Tags + relacion N:M ----------
+
+model Tag {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String
+  color     String?
+  ownerId   String   @db.Uuid
+  createdAt DateTime @default(now())
+
+  owner     User          @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  documents DocumentTag[]
+
+  @@unique([ownerId, name])
+}
+
+model DocumentTag {
+  documentId String @db.Uuid
+  tagId      String @db.Uuid
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  tag      Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([documentId, tagId])
+  @@index([tagId])
+}
+
+// ---------- Favoritos (por usuario) ----------
+
+model Favorite {
+  userId     String   @db.Uuid
+  documentId String   @db.Uuid
+  createdAt  DateTime @default(now())
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@id([userId, documentId])
+  @@index([documentId])
+}
+
+// ---------- Archivos importados / referenciados ----------
+
+model Attachment {
+  id         String   @id @default(uuid()) @db.Uuid
+  documentId String?  @db.Uuid
+  fileName   String
+  mimeType   String
+  sizeBytes  Int
+  storageKey String // clave agnostica; backend fisico segun STORAGE_DRIVER (.env)
+  ownerId    String   @db.Uuid
+  createdAt  DateTime @default(now())
+
+  document Document? @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  owner    User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
+  @@index([ownerId])
+}
+
+// ---------- Referencias entre documentos internos ----------
+
+model DocumentReference {
+  id               String   @id @default(uuid()) @db.Uuid
+  sourceDocumentId String   @db.Uuid
+  targetDocumentId String   @db.Uuid
+  createdAt        DateTime @default(now())
+
+  source Document @relation("RefSource", fields: [sourceDocumentId], references: [id], onDelete: Cascade)
+  target Document @relation("RefTarget", fields: [targetDocumentId], references: [id], onDelete: Cascade)
+
+  @@unique([sourceDocumentId, targetDocumentId])
+  @@index([targetDocumentId])
+}
+
+// ---------- Colectivos y compartición ----------
+
+model Collective {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String
+  description String?
+  ownerId     String   @db.Uuid
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  owner          User               @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  members        CollectiveMember[]
+  documentShares DocumentShare[]
+  categoryShares CategoryShare[]
+}
+
+model CollectiveMember {
+  collectiveId String     @db.Uuid
+  userId       String     @db.Uuid
+  role         MemberRole @default(MEMBER)
+  createdAt    DateTime   @default(now())
+
+  collective Collective @relation(fields: [collectiveId], references: [id], onDelete: Cascade)
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([collectiveId, userId])
+  @@index([userId])
+}
+
+model DocumentShare {
+  id           String          @id @default(uuid()) @db.Uuid
+  documentId   String          @db.Uuid
+  collectiveId String          @db.Uuid
+  permission   SharePermission @default(READ)
+  createdAt    DateTime        @default(now())
+
+  document   Document   @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  collective Collective @relation(fields: [collectiveId], references: [id], onDelete: Cascade)
+
+  @@unique([documentId, collectiveId])
+  @@index([collectiveId])
+}
+
+model CategoryShare {
+  id           String          @id @default(uuid()) @db.Uuid
+  categoryId   String          @db.Uuid
+  collectiveId String          @db.Uuid
+  permission   SharePermission @default(READ)
+  createdAt    DateTime        @default(now())
+
+  category   Category   @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  collective Collective @relation(fields: [collectiveId], references: [id], onDelete: Cascade)
+
+  @@unique([categoryId, collectiveId])
+  @@index([collectiveId])
+}
