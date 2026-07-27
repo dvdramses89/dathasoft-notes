@@ -34,6 +34,7 @@ Repositorio remoto (ya creado): `https://github.com/dvdramses89/dathasoft-notes.
 ## Fase 2 — Base de datos + autenticación
 - [x] 2.1 Postgres local vía **Docker Compose** + Prisma + `DATABASE_URL` en `apps/api/.env`.
 - [x] 2.2 **Esquema COMPLETO** (13 tablas + 2 enums) + **migración inicial** aplicada + buscador full-text (`searchVector` generado + índice GIN, config `spanish`). Verificado con prueba funcional.
+- [x] 2.2b **Prisma conectado a NestJS**: `PrismaModule` global + `PrismaService` (connect/disconnect + shutdown hooks) + endpoint `GET /api/health/db` (`SELECT 1`). Verificado.
 - [ ] 2.3 API auth: registro + login con JWT + guard de rutas protegidas.
 - [ ] 2.4 Web: pantallas de registro/login, guardado de token, ruta protegida.
 - **Validación**: registrarse, iniciar sesión y entrar a una ruta protegida. *(Commit + push)*

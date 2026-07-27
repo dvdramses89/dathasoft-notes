@@ -12,6 +12,9 @@ async function bootstrap(): Promise<void> {
   // CORS abierto en desarrollo (el SPA lo consumira desde otro puerto)
   app.enableCors();
 
+  // Cierre ordenado (Prisma se desconecta en onModuleDestroy)
+  app.enableShutdownHooks();
+
   const config = app.get(ConfigService);
   const port = config.get<number>('PORT') ?? 3000;
 
