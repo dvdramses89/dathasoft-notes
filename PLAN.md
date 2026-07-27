@@ -17,17 +17,19 @@ Repositorio remoto (ya creado): `https://github.com/dvdramses89/dathasoft-notes.
 - [x] 0.3 Estructura monorepo vacía con workspaces: `apps/web`, `apps/api`, `packages/shared`, `package.json` raíz.
 - **Validación**: repo en GitHub con la estructura base. ✅ *(commit `942e1cb` pusheado a `main`)*
 
-## Fase 1 — Andamiaje levantable en local (sin features)
+## Fase 1 — Andamiaje levantable en local (sin features) ✅
 
 ### Tarea 1.1 — Backend API (NestJS) ✅
 - [x] 1.1.a Scaffold de la API NestJS con endpoint `GET /api/health`, arranca en local.
 - [x] 1.1.b Config de entorno de la API: `@nestjs/config` + `.env` / `.env.example` (`PORT`, `NODE_ENV`…).
 - **Validación**: la API arranca en local y responde `/api/health`. ✅ (NestJS 11 + TypeScript 5, `GET /api/health` → `{status:"ok", env:"development", ...}`)
 
-### Tarea 1.2 — Frontend genérico conectado al backend (React + Vite + TS)
-- [ ] 1.2.a Scaffold de la web React + Vite + TS mínima ("DTNotes"), arranca en local.
-- [ ] 1.2.b Config `.env` / `.env.example` con `VITE_API_URL` + cliente HTTP que llama a `/api/health` y pinta el estado del backend.
-- **Validación**: la web arranca en local y muestra que se conecta con la API. *(Commit + push)*
+### Tarea 1.2 — Frontend genérico conectado al backend (React + Vite + TS) ✅
+- [x] 1.2.a Scaffold de la web React + Vite + TS mínima ("DTNotes"), arranca en local.
+- [x] 1.2.b Config `.env` / `.env.example` con `VITE_API_URL` + cliente HTTP que llama a `/api/health` y pinta el estado del backend.
+- **Validación**: la web arranca en local y muestra que se conecta con la API. ✅ (React 18 + Vite 8; card con estado de conexión al backend)
+
+> **Fase 1 cerrada.** Andamiaje completo: API (`/api/health`) + Web (SPA con estado de conexión). Scripts raíz: `npm run dev:api`, `npm run dev:web`, `npm run db:up`/`db:down`.
 
 ## Fase 2 — Base de datos + autenticación
 - [x] 2.1 Postgres local vía **Docker Compose** + Prisma + `DATABASE_URL` en `apps/api/.env`.
