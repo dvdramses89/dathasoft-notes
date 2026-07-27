@@ -1,6 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
-import { Logger } from '@nestjs/common';
+import { Logger, ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 
 async function bootstrap(): Promise<void> {
@@ -8,6 +8,15 @@ async function bootstrap(): Promise<void> {
 
   // Todas las rutas cuelgan de /api
   app.setGlobalPrefix('api');
+
+  // Validacion automatica de DTOs (rechaza campos no permitidos y transforma tipos)
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+    }),
+  );
 
   // CORS abierto en desarrollo (el SPA lo consumira desde otro puerto)
   app.enableCors();
