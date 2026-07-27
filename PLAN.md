@@ -19,10 +19,10 @@ Repositorio remoto (ya creado): `https://github.com/dvdramses89/dathasoft-notes.
 
 ## Fase 1 — Andamiaje levantable en local (sin features)
 
-### Tarea 1.1 — Backend API (NestJS)
-- [ ] 1.1.a Scaffold de la API NestJS con endpoint `GET /api/health`, arranca en local.
-- [ ] 1.1.b Config de entorno de la API: `@nestjs/config` + `.env` / `.env.example` (`PORT`, `NODE_ENV`…).
-- **Validación**: la API arranca en local y responde `/api/health`. *(Commit + push)*
+### Tarea 1.1 — Backend API (NestJS) ✅
+- [x] 1.1.a Scaffold de la API NestJS con endpoint `GET /api/health`, arranca en local.
+- [x] 1.1.b Config de entorno de la API: `@nestjs/config` + `.env` / `.env.example` (`PORT`, `NODE_ENV`…).
+- **Validación**: la API arranca en local y responde `/api/health`. ✅ (NestJS 11 + TypeScript 5, `GET /api/health` → `{status:"ok", env:"development", ...}`)
 
 ### Tarea 1.2 — Frontend genérico conectado al backend (React + Vite + TS)
 - [ ] 1.2.a Scaffold de la web React + Vite + TS mínima ("DTNotes"), arranca en local.
