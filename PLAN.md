@@ -37,7 +37,7 @@ Repositorio remoto (ya creado): `https://github.com/dvdramses89/dathasoft-notes.
 - [x] 2.2b **Prisma conectado a NestJS**: `PrismaModule` global + `PrismaService` (connect/disconnect + shutdown hooks) + endpoint `GET /api/health/db` (`SELECT 1`). Verificado.
 - [~] 2.3 API auth (por sub-tareas):
   - [x] 2.3.a Registro (`POST /api/auth/register`) con hash `bcryptjs` + validación de DTOs (`ValidationPipe` global). Verificado: 201, 409 duplicado, 400 inválido/campo extra; hash en BD.
-  - [ ] 2.3.b Login (`POST /api/auth/login`) → JWT.
+  - [x] 2.3.b Login (`POST /api/auth/login`) → JWT (`@nestjs/jwt`, secreto y expiración por `.env`). Verificado: 200 + token válido (sub/email/exp +1d), 401 en credenciales inválidas.
   - [ ] 2.3.c Guard JWT + endpoint protegido (`GET /api/auth/me`).
 - [ ] 2.4 Web: pantallas de registro/login, guardado de token, ruta protegida.
 - **Validación**: registrarse, iniciar sesión y entrar a una ruta protegida. *(Commit + push)*
