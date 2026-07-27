@@ -1,73 +1,26 @@
-import { useEffect, useState } from 'react';
-import { getHealth, API_URL, type HealthResponse } from './lib/api';
-
-type ConnState =
-  | { status: 'loading' }
-  | { status: 'ok'; data: HealthResponse }
-  | { status: 'error'; message: string };
+import { Navigate, Route, Routes } from 'react-router-dom';
+import { useAuth } from './auth/AuthContext';
+import { ProtectedRoute } from './components/ProtectedRoute';
+import { HomePage } from './pages/HomePage';
+import { LoginPage } from './pages/LoginPage';
+import { RegisterPage } from './pages/RegisterPage';
 
 export function App() {
-  const [state, setState] = useState<ConnState>({ status: 'loading' });
-
-  useEffect(() => {
-    let active = true;
-    getHealth()
-      .then((data) => {
-        if (active) setState({ status: 'ok', data });
-      })
-      .catch((err: unknown) => {
-        if (active) {
-          setState({
-            status: 'error',
-            message: err instanceof Error ? err.message : 'Error desconocido',
-          });
-        }
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
+  const { user } = useAuth();
 
   return (
-    <main className="card">
-      <h1 className="brand">DTNotes</h1>
-      <p className="subtitle">Repositorio de documentación del equipo</p>
+    <Routes>
+      {/* Publicas: si ya hay sesion, no dejamos volver a login/registro */}
+      <Route path="/login" element={user ? <Navigate to="/" replace /> : <LoginPage />} />
+      <Route path="/register" element={user ? <Navigate to="/" replace /> : <RegisterPage />} />
 
-      <div className="status">
-        {state.status === 'loading' && (
-          <span className="badge badge--loading">Conectando con la API…</span>
-        )}
-        {state.status === 'ok' && (
-          <span className="badge badge--ok">● Conectado con el backend</span>
-        )}
-        {state.status === 'error' && (
-          <span className="badge badge--error">● Sin conexión con el backend</span>
-        )}
-      </div>
+      {/* Protegidas */}
+      <Route element={<ProtectedRoute />}>
+        <Route path="/" element={<HomePage />} />
+      </Route>
 
-      {state.status === 'ok' && (
-        <dl className="details">
-          <div>
-            <dt>Servicio</dt>
-            <dd>{state.data.service}</dd>
-          </div>
-          <div>
-            <dt>Entorno</dt>
-            <dd>{state.data.env}</dd>
-          </div>
-          <div>
-            <dt>Timestamp</dt>
-            <dd>{new Date(state.data.timestamp).toLocaleString()}</dd>
-          </div>
-        </dl>
-      )}
-
-      {state.status === 'error' && (
-        <p className="hint">
-          No se pudo contactar con <code>{API_URL}/health</code>. Comprueba que la API
-          esté levantada ({state.message}).
-        </p>
-      )}
-    </main>
+      {/* Cualquier otra ruta va al inicio */}
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 }

@@ -39,8 +39,10 @@ Repositorio remoto (ya creado): `https://github.com/dvdramses89/dathasoft-notes.
   - [x] 2.3.a Registro (`POST /api/auth/register`) con hash `bcryptjs` + validación de DTOs (`ValidationPipe` global). Verificado: 201, 409 duplicado, 400 inválido/campo extra; hash en BD.
   - [x] 2.3.b Login (`POST /api/auth/login`) → JWT (`@nestjs/jwt`, secreto y expiración por `.env`). Verificado: 200 + token válido (sub/email/exp +1d), 401 en credenciales inválidas.
   - [x] 2.3.c Guard JWT (`@nestjs/passport` + `passport-jwt`) + endpoint protegido `GET /api/auth/me` + decorador `@CurrentUser`. Verificado: 401 sin token / token inválido, 200 + usuario con token válido.
-- [ ] 2.4 Web: pantallas de registro/login, guardado de token, ruta protegida.
+- [x] 2.4 Web: pantallas de registro/login, guardado de token (localStorage), ruta protegida (`react-router-dom`, `AuthContext`, `ProtectedRoute`). Build OK; flujo visual a validar en navegador.
 - **Validación**: registrarse, iniciar sesión y entrar a una ruta protegida. *(Commit + push)*
+
+> **Fase 2 cerrada.** Autenticación completa de punta a punta (backend + frontend).
 
 > Nota: se decidió crear el esquema completo de una vez. Por eso, en las Fases 3–9 **las tablas ya existen**: esas fases solo construyen la **API + UI** sobre el modelo ya migrado (no vuelven a tocar el esquema salvo ajustes puntuales).
 
