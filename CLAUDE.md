@@ -110,3 +110,7 @@ Toda la configuración entorno-dependiente vive en **archivos `.env`**, reutiliz
 ## Plan de desarrollo
 
 Ver [PLAN.md](PLAN.md) — plan por fases y tareas pequeñas, validables en local una a una, con subida a GitHub por hitos y el despliegue en Zeabur al final.
+
+## Plantilla reutilizable
+
+Ver [TEMPLATE.md](TEMPLATE.md) — este proyecto sirve como base reutilizable **NestJS + Prisma + React + auth JWT** para otros proyectos. La capa de arranque (stack + auth + infra) es genérica; lo específico de DTNotes es el `schema.prisma` (recortar a `User`) y el branding. Incluye la receta para bootstrap de un proyecto nuevo.
