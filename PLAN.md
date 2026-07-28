@@ -50,7 +50,7 @@ Repositorio remoto (ya creado): `https://github.com/dvdramses89/dathasoft-notes.
 - [x] 3.1 CRUD REST de categorías (el modelo/migración ya existían): `POST/GET/PATCH/DELETE /api/categories`, protegido por JWT y scoped al owner. Árbol anidado, renombrar/color/icono/reordenar. **Mover** (`PATCH /:id/move`) y **borrar** (`DELETE /:id?mode=`) con dos modos: `subtree` (toda la estructura) o `single` (solo la carpeta; hijas suben al padre inmediato). Prevención de ciclos. Verificado (ambos modos).
 - [~] 3.2 Web: sidebar en árbol (estilo Craft) — por sub-tareas:
   - [x] 3.2.a Árbol visible + expandir/contraer + selección + **crear** (la carpeta seleccionada es el padre; raíz si no hay selección). App shell con sidebar + contenido.
-  - [ ] 3.2.b Renombrar + borrar (con diálogo de modo subtree/single).
+  - [x] 3.2.b Renombrar (inline) + borrar con **diálogo de modo** (subtree/single) cuando la carpeta tiene subcarpetas; confirmación simple si está vacía.
   - [ ] 3.2.c Mover (drag o selector de destino) con diálogo de modo + reordenar.
 - **Validación**: gestionar carpetas y subcarpetas en el sidebar. *(Commit + push)*
 

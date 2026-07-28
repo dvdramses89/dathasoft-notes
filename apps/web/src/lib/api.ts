@@ -118,4 +118,23 @@ export function createCategory(input: {
   });
 }
 
+// subtree = la carpeta y toda su estructura; single = solo la carpeta (las hijas suben).
+export type TreeMode = 'subtree' | 'single';
+
+export function updateCategory(
+  id: string,
+  input: { name?: string; color?: string; icon?: string; position?: number },
+): Promise<{ id: string }> {
+  return request<{ id: string }>(`/categories/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  });
+}
+
+export function deleteCategory(id: string, mode: TreeMode): Promise<{ deleted: number }> {
+  return request<{ deleted: number }>(`/categories/${id}?mode=${mode}`, {
+    method: 'DELETE',
+  });
+}
+
 export { API_URL };

@@ -1,7 +1,7 @@
 import { useState, type KeyboardEvent, type MouseEvent } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import { useCategories } from '../categories/CategoriesContext';
-import type { CategoryNode } from '../lib/api';
+import type { CategoryNode, TreeMode } from '../lib/api';
 
 function FolderIcon() {
   return (
@@ -28,54 +28,140 @@ function Chevron({ open }: { open: boolean }) {
   );
 }
 
+function PencilIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
+      <path
+        fill="currentColor"
+        d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25ZM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83Z"
+      />
+    </svg>
+  );
+}
+
+function TrashIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
+      <path
+        fill="currentColor"
+        d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6v12ZM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4Z"
+      />
+    </svg>
+  );
+}
+
+function RenameInput({
+  initial,
+  onSubmit,
+  onCancel,
+}: {
+  initial: string;
+  onSubmit: (name: string) => void;
+  onCancel: () => void;
+}) {
+  const [value, setValue] = useState(initial);
+  return (
+    <input
+      className="rename-input"
+      autoFocus
+      value={value}
+      onClick={(e) => e.stopPropagation()}
+      onChange={(e) => setValue(e.target.value)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          onSubmit(value.trim());
+        } else if (e.key === 'Escape') {
+          onCancel();
+        }
+      }}
+      onBlur={() => onSubmit(value.trim())}
+    />
+  );
+}
+
 interface TreeItemProps {
   node: CategoryNode;
   depth: number;
   selectedId: string | null;
   expanded: Set<string>;
+  editingId: string | null;
   onSelect: (id: string) => void;
   onToggle: (id: string) => void;
+  onStartRename: (id: string) => void;
+  onSubmitRename: (id: string, name: string) => void;
+  onCancelRename: () => void;
+  onRequestDelete: (node: CategoryNode) => void;
 }
 
-function TreeItem({ node, depth, selectedId, expanded, onSelect, onToggle }: TreeItemProps) {
+function TreeItem(props: TreeItemProps) {
+  const { node, depth, selectedId, expanded, editingId } = props;
   const hasChildren = node.children.length > 0;
   const isOpen = expanded.has(node.id);
   const isSelected = selectedId === node.id;
+  const isEditing = editingId === node.id;
 
   return (
     <li>
       <div
         className={`tree-item${isSelected ? ' tree-item--selected' : ''}`}
         style={{ paddingLeft: `${depth * 14 + 8}px` }}
-        onClick={() => onSelect(node.id)}
+        onClick={() => props.onSelect(node.id)}
       >
         <span
           className="tree-chevron"
           onClick={(e: MouseEvent) => {
             e.stopPropagation();
             if (hasChildren) {
-              onToggle(node.id);
+              props.onToggle(node.id);
             }
           }}
         >
           {hasChildren ? <Chevron open={isOpen} /> : null}
         </span>
         <FolderIcon />
-        <span className="tree-name">{node.name}</span>
+
+        {isEditing ? (
+          <RenameInput
+            initial={node.name}
+            onSubmit={(name) => props.onSubmitRename(node.id, name)}
+            onCancel={props.onCancelRename}
+          />
+        ) : (
+          <span className="tree-name">{node.name}</span>
+        )}
+
+        {!isEditing && (
+          <span className="tree-actions">
+            <button
+              className="tree-action"
+              type="button"
+              title="Renombrar"
+              onClick={(e) => {
+                e.stopPropagation();
+                props.onStartRename(node.id);
+              }}
+            >
+              <PencilIcon />
+            </button>
+            <button
+              className="tree-action"
+              type="button"
+              title="Eliminar"
+              onClick={(e) => {
+                e.stopPropagation();
+                props.onRequestDelete(node);
+              }}
+            >
+              <TrashIcon />
+            </button>
+          </span>
+        )}
       </div>
 
       {hasChildren && isOpen && (
         <ul className="tree-children">
           {node.children.map((child) => (
-            <TreeItem
-              key={child.id}
-              node={child}
-              depth={depth + 1}
-              selectedId={selectedId}
-              expanded={expanded}
-              onSelect={onSelect}
-              onToggle={onToggle}
-            />
+            <TreeItem key={child.id} {...props} node={child} depth={depth + 1} />
           ))}
         </ul>
       )}
@@ -84,12 +170,15 @@ function TreeItem({ node, depth, selectedId, expanded, onSelect, onToggle }: Tre
 }
 
 export function Sidebar() {
-  const { tree, loading, selectedId, selectedNode, select, create } = useCategories();
+  const { tree, loading, selectedId, selectedNode, select, create, rename, remove } =
+    useCategories();
   const { user, logout } = useAuth();
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [adding, setAdding] = useState(false);
   const [newName, setNewName] = useState('');
   const [busy, setBusy] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<CategoryNode | null>(null);
 
   function toggle(id: string) {
     setExpanded((prev) => {
@@ -111,7 +200,6 @@ export function Sidebar() {
     setBusy(true);
     try {
       await create(name, selectedId);
-      // Al crear una subcarpeta, expandimos la carpeta padre para verla.
       if (selectedId) {
         setExpanded((prev) => new Set(prev).add(selectedId));
       }
@@ -129,6 +217,20 @@ export function Sidebar() {
       setAdding(false);
       setNewName('');
     }
+  }
+
+  function submitRename(id: string, name: string) {
+    setEditingId(null);
+    if (name) {
+      void rename(id, name);
+    }
+  }
+
+  function confirmDelete(mode: TreeMode) {
+    if (deleteTarget) {
+      void remove(deleteTarget.id, mode);
+    }
+    setDeleteTarget(null);
   }
 
   return (
@@ -183,8 +285,13 @@ export function Sidebar() {
                 depth={0}
                 selectedId={selectedId}
                 expanded={expanded}
+                editingId={editingId}
                 onSelect={select}
                 onToggle={toggle}
+                onStartRename={setEditingId}
+                onSubmitRename={submitRename}
+                onCancelRename={() => setEditingId(null)}
+                onRequestDelete={setDeleteTarget}
               />
             ))}
           </ul>
@@ -203,6 +310,45 @@ export function Sidebar() {
           ⎋
         </button>
       </div>
+
+      {deleteTarget && (
+        <div className="modal-overlay" onClick={() => setDeleteTarget(null)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h3 className="modal-title">Eliminar «{deleteTarget.name}»</h3>
+            {deleteTarget.children.length > 0 ? (
+              <>
+                <p className="modal-text">
+                  Esta carpeta contiene subcarpetas. ¿Qué quieres enviar a la papelera?
+                </p>
+                <div className="modal-actions modal-actions--stack">
+                  <button className="btn btn--ghost" type="button" onClick={() => confirmDelete('single')}>
+                    Solo esta carpeta
+                    <small>Las subcarpetas suben al nivel superior</small>
+                  </button>
+                  <button className="btn" type="button" onClick={() => confirmDelete('subtree')}>
+                    Esta carpeta y todo su contenido
+                  </button>
+                  <button className="modal-cancel" type="button" onClick={() => setDeleteTarget(null)}>
+                    Cancelar
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="modal-text">¿Enviar esta carpeta a la papelera?</p>
+                <div className="modal-actions">
+                  <button className="btn btn--ghost" type="button" onClick={() => setDeleteTarget(null)}>
+                    Cancelar
+                  </button>
+                  <button className="btn" type="button" onClick={() => confirmDelete('subtree')}>
+                    Eliminar
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </aside>
   );
 }
