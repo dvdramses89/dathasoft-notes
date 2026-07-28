@@ -88,4 +88,34 @@ export function getMe(): Promise<PublicUser> {
   return request<PublicUser>('/auth/me');
 }
 
+// ---------------- Categorias ----------------
+
+export interface CategoryNode {
+  id: string;
+  name: string;
+  icon: string | null;
+  color: string | null;
+  position: number;
+  parentId: string | null;
+  children: CategoryNode[];
+}
+
+export function getCategories(): Promise<CategoryNode[]> {
+  return request<CategoryNode[]>('/categories');
+}
+
+export function createCategory(input: {
+  name: string;
+  parentId?: string | null;
+}): Promise<{ id: string }> {
+  const body: { name: string; parentId?: string } = { name: input.name };
+  if (input.parentId) {
+    body.parentId = input.parentId;
+  }
+  return request<{ id: string }>('/categories', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+}
+
 export { API_URL };

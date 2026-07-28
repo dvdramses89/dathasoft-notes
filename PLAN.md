@@ -48,7 +48,10 @@ Repositorio remoto (ya creado): `https://github.com/dvdramses89/dathasoft-notes.
 
 ## Fase 3 — Categorías (árbol de carpetas estilo Craft)
 - [x] 3.1 CRUD REST de categorías (el modelo/migración ya existían): `POST/GET/PATCH/DELETE /api/categories`, protegido por JWT y scoped al owner. Árbol anidado, renombrar/color/icono/reordenar. **Mover** (`PATCH /:id/move`) y **borrar** (`DELETE /:id?mode=`) con dos modos: `subtree` (toda la estructura) o `single` (solo la carpeta; hijas suben al padre inmediato). Prevención de ciclos. Verificado (ambos modos).
-- [ ] 3.2 Web: sidebar en árbol con crear / renombrar / mover / borrar y orden manual.
+- [~] 3.2 Web: sidebar en árbol (estilo Craft) — por sub-tareas:
+  - [x] 3.2.a Árbol visible + expandir/contraer + selección + **crear** (la carpeta seleccionada es el padre; raíz si no hay selección). App shell con sidebar + contenido.
+  - [ ] 3.2.b Renombrar + borrar (con diálogo de modo subtree/single).
+  - [ ] 3.2.c Mover (drag o selector de destino) con diálogo de modo + reordenar.
 - **Validación**: gestionar carpetas y subcarpetas en el sidebar. *(Commit + push)*
 
 ## Fase 4 — Documentos + editor BlockNote

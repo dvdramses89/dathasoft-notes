@@ -1,29 +1,27 @@
 import { useAuth } from '../auth/AuthContext';
+import { useCategories } from '../categories/CategoriesContext';
 
 export function HomePage() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
+  const { selectedNode } = useCategories();
 
   return (
-    <main className="card">
-      <h1 className="brand">DTNotes</h1>
-      <p className="subtitle">Repositorio de documentación del equipo</p>
-
-      <span className="badge badge--ok">● Sesión iniciada</span>
-
-      <dl className="details">
-        <div>
-          <dt>Nombre</dt>
-          <dd>{user?.name}</dd>
+    <div className="content-inner">
+      {selectedNode ? (
+        <div className="content-header">
+          <h1 className="content-title">{selectedNode.name}</h1>
+          <p className="content-subtitle">
+            Carpeta seleccionada · los documentos se mostrarán aquí (próxima fase).
+          </p>
         </div>
-        <div>
-          <dt>Email</dt>
-          <dd>{user?.email}</dd>
+      ) : (
+        <div className="content-empty">
+          <h1 className="content-title">Hola, {user?.name?.split(' ')[0]} 👋</h1>
+          <p className="content-subtitle">
+            Selecciona una carpeta en el panel izquierdo o crea una nueva con «+».
+          </p>
         </div>
-      </dl>
-
-      <button className="btn btn--ghost" type="button" onClick={logout}>
-        Cerrar sesión
-      </button>
-    </main>
+      )}
+    </div>
   );
 }
