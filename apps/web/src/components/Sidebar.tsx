@@ -325,7 +325,7 @@ export function Sidebar() {
                     Solo esta carpeta
                     <small>Las subcarpetas suben al nivel superior</small>
                   </button>
-                  <button className="btn" type="button" onClick={() => confirmDelete('subtree')}>
+                  <button className="btn btn--danger" type="button" onClick={() => confirmDelete('subtree')}>
                     Esta carpeta y todo su contenido
                   </button>
                   <button className="modal-cancel" type="button" onClick={() => setDeleteTarget(null)}>
@@ -340,7 +340,7 @@ export function Sidebar() {
                   <button className="btn btn--ghost" type="button" onClick={() => setDeleteTarget(null)}>
                     Cancelar
                   </button>
-                  <button className="btn" type="button" onClick={() => confirmDelete('subtree')}>
+                  <button className="btn btn--danger" type="button" onClick={() => confirmDelete('subtree')}>
                     Eliminar
                   </button>
                 </div>

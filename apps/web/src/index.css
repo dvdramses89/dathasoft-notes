@@ -159,7 +159,7 @@ code {
 .btn {
   width: 100%;
   padding: 0.7rem 1rem;
-  border: none;
+  border: 1px solid transparent;
   border-radius: 10px;
   background: linear-gradient(120deg, #6366f1, #818cf8);
   color: white;
@@ -183,10 +183,14 @@ code {
 }
 
 .btn--ghost {
-  margin-top: 1.5rem;
   background: transparent;
   border: 1px solid rgba(148, 163, 184, 0.3);
   color: var(--text);
+}
+
+.btn--danger {
+  background: linear-gradient(120deg, #ef4444, #dc2626);
+  border-color: transparent;
 }
 
 .switch {
@@ -451,17 +455,17 @@ code {
 
 .modal-actions .btn {
   width: auto;
+}
+
+.modal-actions--stack .btn {
+  width: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 0.15rem;
 }
 
-.modal-actions--stack .btn {
-  width: 100%;
-}
-
-.modal-actions .btn small {
+.modal-actions--stack .btn small {
   font-weight: 400;
   font-size: 0.72rem;
   opacity: 0.85;
