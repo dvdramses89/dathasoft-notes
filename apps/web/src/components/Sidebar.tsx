@@ -2,6 +2,7 @@ import { useState, type KeyboardEvent, type MouseEvent } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import { useCategories } from '../categories/CategoriesContext';
 import type { CategoryNode, TreeMode } from '../lib/api';
+import { MoveModal } from './MoveModal';
 
 function FolderIcon() {
   return (
@@ -50,6 +51,17 @@ function TrashIcon() {
   );
 }
 
+function MoveIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
+      <path
+        fill="currentColor"
+        d="M20 6h-8l-2-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2Zm-8 11v-3H8v-2h4V9l4 4-4 4Z"
+      />
+    </svg>
+  );
+}
+
 function RenameInput({
   initial,
   onSubmit,
@@ -90,6 +102,7 @@ interface TreeItemProps {
   onStartRename: (id: string) => void;
   onSubmitRename: (id: string, name: string) => void;
   onCancelRename: () => void;
+  onRequestMove: (node: CategoryNode) => void;
   onRequestDelete: (node: CategoryNode) => void;
 }
 
@@ -146,6 +159,17 @@ function TreeItem(props: TreeItemProps) {
             <button
               className="tree-action"
               type="button"
+              title="Mover"
+              onClick={(e) => {
+                e.stopPropagation();
+                props.onRequestMove(node);
+              }}
+            >
+              <MoveIcon />
+            </button>
+            <button
+              className="tree-action"
+              type="button"
               title="Eliminar"
               onClick={(e) => {
                 e.stopPropagation();
@@ -170,7 +194,7 @@ function TreeItem(props: TreeItemProps) {
 }
 
 export function Sidebar() {
-  const { tree, loading, selectedId, selectedNode, select, create, rename, remove } =
+  const { tree, loading, selectedId, selectedNode, select, create, rename, remove, move } =
     useCategories();
   const { user, logout } = useAuth();
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -179,6 +203,7 @@ export function Sidebar() {
   const [busy, setBusy] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<CategoryNode | null>(null);
+  const [moveTarget, setMoveTarget] = useState<CategoryNode | null>(null);
 
   function toggle(id: string) {
     setExpanded((prev) => {
@@ -291,6 +316,7 @@ export function Sidebar() {
                 onStartRename={setEditingId}
                 onSubmitRename={submitRename}
                 onCancelRename={() => setEditingId(null)}
+                onRequestMove={setMoveTarget}
                 onRequestDelete={setDeleteTarget}
               />
             ))}
@@ -348,6 +374,18 @@ export function Sidebar() {
             )}
           </div>
         </div>
+      )}
+
+      {moveTarget && (
+        <MoveModal
+          target={moveTarget}
+          tree={tree}
+          onCancel={() => setMoveTarget(null)}
+          onConfirm={(parentId, mode) => {
+            void move(moveTarget.id, parentId, mode);
+            setMoveTarget(null);
+          }}
+        />
       )}
     </aside>
   );

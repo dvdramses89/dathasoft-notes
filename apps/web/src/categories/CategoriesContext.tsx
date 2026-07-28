@@ -11,6 +11,7 @@ import {
   createCategory,
   deleteCategory,
   getCategories,
+  moveCategory,
   updateCategory,
   type CategoryNode,
   type TreeMode,
@@ -39,6 +40,7 @@ interface CategoriesContextValue {
   create: (name: string, parentId: string | null) => Promise<void>;
   rename: (id: string, name: string) => Promise<void>;
   remove: (id: string, mode: TreeMode) => Promise<void>;
+  move: (id: string, parentId: string | null, mode: TreeMode) => Promise<void>;
 }
 
 const CategoriesContext = createContext<CategoriesContextValue | undefined>(undefined);
@@ -86,14 +88,33 @@ export function CategoriesProvider({ children }: { children: ReactNode }) {
     [reload],
   );
 
+  const move = useCallback(
+    async (id: string, parentId: string | null, mode: TreeMode) => {
+      await moveCategory(id, parentId, mode);
+      await reload();
+    },
+    [reload],
+  );
+
   const selectedNode = useMemo(
     () => (selectedId ? findNode(tree, selectedId) : null),
     [tree, selectedId],
   );
 
   const value = useMemo<CategoriesContextValue>(
-    () => ({ tree, loading, selectedId, selectedNode, select, reload, create, rename, remove }),
-    [tree, loading, selectedId, selectedNode, select, reload, create, rename, remove],
+    () => ({
+      tree,
+      loading,
+      selectedId,
+      selectedNode,
+      select,
+      reload,
+      create,
+      rename,
+      remove,
+      move,
+    }),
+    [tree, loading, selectedId, selectedNode, select, reload, create, rename, remove, move],
   );
 
   return <CategoriesContext.Provider value={value}>{children}</CategoriesContext.Provider>;

@@ -137,4 +137,15 @@ export function deleteCategory(id: string, mode: TreeMode): Promise<{ deleted: n
   });
 }
 
+export function moveCategory(
+  id: string,
+  parentId: string | null,
+  mode: TreeMode,
+): Promise<{ id: string }> {
+  return request<{ id: string }>(`/categories/${id}/move`, {
+    method: 'PATCH',
+    body: JSON.stringify({ parentId, mode }),
+  });
+}
+
 export { API_URL };
