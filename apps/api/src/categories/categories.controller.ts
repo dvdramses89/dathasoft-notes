@@ -18,6 +18,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CategoriesService } from './categories.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { MoveCategoryDto } from './dto/move-category.dto';
+import { ReorderCategoriesDto } from './dto/reorder-categories.dto';
 import { TreeMode } from './dto/tree-mode.enum';
 import { UpdateCategoryDto } from './dto/update-category.dto';
 
@@ -36,6 +37,13 @@ export class CategoriesController {
   @Get()
   tree(@CurrentUser() user: PublicUser) {
     return this.categories.tree(user.id);
+  }
+
+  // PATCH /api/categories/reorder -> reordena las hermanas de un nivel
+  // (se declara ANTES de :id para que no lo capture la ruta con parametro)
+  @Patch('reorder')
+  reorder(@CurrentUser() user: PublicUser, @Body() dto: ReorderCategoriesDto) {
+    return this.categories.reorder(user.id, dto.parentId ?? null, dto.orderedIds);
   }
 
   // PATCH /api/categories/:id -> renombrar / color / icono / posicion

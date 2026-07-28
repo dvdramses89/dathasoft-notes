@@ -12,6 +12,7 @@ import {
   deleteCategory,
   getCategories,
   moveCategory,
+  reorderCategories,
   updateCategory,
   type CategoryNode,
   type TreeMode,
@@ -41,6 +42,7 @@ interface CategoriesContextValue {
   rename: (id: string, name: string) => Promise<void>;
   remove: (id: string, mode: TreeMode) => Promise<void>;
   move: (id: string, parentId: string | null, mode: TreeMode) => Promise<void>;
+  reorder: (parentId: string | null, orderedIds: string[]) => Promise<void>;
 }
 
 const CategoriesContext = createContext<CategoriesContextValue | undefined>(undefined);
@@ -96,6 +98,14 @@ export function CategoriesProvider({ children }: { children: ReactNode }) {
     [reload],
   );
 
+  const reorder = useCallback(
+    async (parentId: string | null, orderedIds: string[]) => {
+      await reorderCategories(parentId, orderedIds);
+      await reload();
+    },
+    [reload],
+  );
+
   const selectedNode = useMemo(
     () => (selectedId ? findNode(tree, selectedId) : null),
     [tree, selectedId],
@@ -113,8 +123,9 @@ export function CategoriesProvider({ children }: { children: ReactNode }) {
       rename,
       remove,
       move,
+      reorder,
     }),
-    [tree, loading, selectedId, selectedNode, select, reload, create, rename, remove, move],
+    [tree, loading, selectedId, selectedNode, select, reload, create, rename, remove, move, reorder],
   );
 
   return <CategoriesContext.Provider value={value}>{children}</CategoriesContext.Provider>;

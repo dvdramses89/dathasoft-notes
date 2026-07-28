@@ -1,8 +1,30 @@
-import { useState, type KeyboardEvent, type MouseEvent } from 'react';
+import { useState, type DragEvent, type KeyboardEvent, type MouseEvent } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import { useCategories } from '../categories/CategoriesContext';
 import type { CategoryNode, TreeMode } from '../lib/api';
 import { MoveModal } from './MoveModal';
+
+type DropPos = 'before' | 'after';
+interface DropIndicator {
+  id: string;
+  pos: DropPos;
+}
+
+// IDs (en orden) de las carpetas hermanas de un nivel dado.
+function siblingIdsOf(tree: CategoryNode[], parentId: string | null): string[] {
+  if (parentId === null) {
+    return tree.map((n) => n.id);
+  }
+  const stack = [...tree];
+  while (stack.length > 0) {
+    const current = stack.pop() as CategoryNode;
+    if (current.id === parentId) {
+      return current.children.map((c) => c.id);
+    }
+    stack.push(...current.children);
+  }
+  return [];
+}
 
 function FolderIcon() {
   return (
@@ -104,21 +126,52 @@ interface TreeItemProps {
   onCancelRename: () => void;
   onRequestMove: (node: CategoryNode) => void;
   onRequestDelete: (node: CategoryNode) => void;
+  dragId: string | null;
+  dropIndicator: DropIndicator | null;
+  onDragStart: (node: CategoryNode) => void;
+  onDragOver: (e: DragEvent<HTMLDivElement>, node: CategoryNode) => void;
+  onDrop: (node: CategoryNode) => void;
+  onDragEnd: () => void;
 }
 
 function TreeItem(props: TreeItemProps) {
-  const { node, depth, selectedId, expanded, editingId } = props;
+  const { node, depth, selectedId, expanded, editingId, dragId, dropIndicator } = props;
   const hasChildren = node.children.length > 0;
   const isOpen = expanded.has(node.id);
   const isSelected = selectedId === node.id;
   const isEditing = editingId === node.id;
+  const isDragging = dragId === node.id;
+  const dropBefore = dropIndicator?.id === node.id && dropIndicator.pos === 'before';
+  const dropAfter = dropIndicator?.id === node.id && dropIndicator.pos === 'after';
+
+  const classes = [
+    'tree-item',
+    isSelected ? 'tree-item--selected' : '',
+    isDragging ? 'tree-item--dragging' : '',
+    dropBefore ? 'tree-item--drop-before' : '',
+    dropAfter ? 'tree-item--drop-after' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
 
   return (
     <li>
       <div
-        className={`tree-item${isSelected ? ' tree-item--selected' : ''}`}
+        className={classes}
         style={{ paddingLeft: `${depth * 14 + 8}px` }}
+        draggable={!isEditing}
         onClick={() => props.onSelect(node.id)}
+        onDragStart={(e) => {
+          e.stopPropagation();
+          props.onDragStart(node);
+        }}
+        onDragOver={(e) => props.onDragOver(e, node)}
+        onDrop={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          props.onDrop(node);
+        }}
+        onDragEnd={props.onDragEnd}
       >
         <span
           className="tree-chevron"
@@ -194,7 +247,7 @@ function TreeItem(props: TreeItemProps) {
 }
 
 export function Sidebar() {
-  const { tree, loading, selectedId, selectedNode, select, create, rename, remove, move } =
+  const { tree, loading, selectedId, selectedNode, select, create, rename, remove, move, reorder } =
     useCategories();
   const { user, logout } = useAuth();
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -204,6 +257,9 @@ export function Sidebar() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<CategoryNode | null>(null);
   const [moveTarget, setMoveTarget] = useState<CategoryNode | null>(null);
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [dragParent, setDragParent] = useState<string | null>(null);
+  const [dropIndicator, setDropIndicator] = useState<DropIndicator | null>(null);
 
   function toggle(id: string) {
     setExpanded((prev) => {
@@ -256,6 +312,46 @@ export function Sidebar() {
       void remove(deleteTarget.id, mode);
     }
     setDeleteTarget(null);
+  }
+
+  // ---- Drag & drop para reordenar entre hermanas ----
+  function clearDrag() {
+    setDragId(null);
+    setDragParent(null);
+    setDropIndicator(null);
+  }
+
+  function handleDragStart(node: CategoryNode) {
+    setDragId(node.id);
+    setDragParent(node.parentId);
+    setDropIndicator(null);
+  }
+
+  function handleDragOver(e: DragEvent<HTMLDivElement>, node: CategoryNode) {
+    // Solo se reordena entre hermanas del mismo padre (y no sobre sí misma).
+    if (dragId && node.parentId === dragParent && node.id !== dragId) {
+      e.preventDefault();
+      const rect = e.currentTarget.getBoundingClientRect();
+      const pos: DropPos = e.clientY < rect.top + rect.height / 2 ? 'before' : 'after';
+      setDropIndicator({ id: node.id, pos });
+    }
+  }
+
+  function handleDrop(target: CategoryNode) {
+    if (!dragId || !dropIndicator || target.parentId !== dragParent || target.id === dragId) {
+      clearDrag();
+      return;
+    }
+    const ids = siblingIdsOf(tree, dragParent).filter((id) => id !== dragId);
+    const idx = ids.indexOf(target.id);
+    if (idx === -1) {
+      clearDrag();
+      return;
+    }
+    const insertAt = dropIndicator.pos === 'before' ? idx : idx + 1;
+    ids.splice(insertAt, 0, dragId);
+    void reorder(dragParent, ids);
+    clearDrag();
   }
 
   return (
@@ -318,6 +414,12 @@ export function Sidebar() {
                 onCancelRename={() => setEditingId(null)}
                 onRequestMove={setMoveTarget}
                 onRequestDelete={setDeleteTarget}
+                dragId={dragId}
+                dropIndicator={dropIndicator}
+                onDragStart={handleDragStart}
+                onDragOver={handleDragOver}
+                onDrop={handleDrop}
+                onDragEnd={clearDrag}
               />
             ))}
           </ul>

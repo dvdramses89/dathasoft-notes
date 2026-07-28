@@ -131,6 +131,31 @@ export class CategoriesService {
     return { deleted: result.count };
   }
 
+  /** Reordena las carpetas hermanas de un nivel reasignando sus posiciones. */
+  async reorder(
+    ownerId: string,
+    parentId: string | null,
+    orderedIds: string[],
+  ): Promise<{ reordered: number }> {
+    if (new Set(orderedIds).size !== orderedIds.length) {
+      throw new BadRequestException('La lista de orden contiene IDs duplicados');
+    }
+    const siblings = await this.prisma.category.findMany({
+      where: { ownerId, parentId, deletedAt: null },
+      select: { id: true },
+    });
+    const siblingIds = new Set(siblings.map((s) => s.id));
+    if (orderedIds.length !== siblingIds.size || !orderedIds.every((id) => siblingIds.has(id))) {
+      throw new BadRequestException('La lista de orden no coincide con las carpetas de ese nivel');
+    }
+    await this.prisma.$transaction(
+      orderedIds.map((id, index) =>
+        this.prisma.category.update({ where: { id }, data: { position: index } }),
+      ),
+    );
+    return { reordered: orderedIds.length };
+  }
+
   // ---------------- helpers ----------------
 
   private async assertOwned(ownerId: string, id: string): Promise<Category> {

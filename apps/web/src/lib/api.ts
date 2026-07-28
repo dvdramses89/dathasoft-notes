@@ -148,4 +148,14 @@ export function moveCategory(
   });
 }
 
+export function reorderCategories(
+  parentId: string | null,
+  orderedIds: string[],
+): Promise<{ reordered: number }> {
+  return request<{ reordered: number }>('/categories/reorder', {
+    method: 'PATCH',
+    body: JSON.stringify({ parentId, orderedIds }),
+  });
+}
+
 export { API_URL };

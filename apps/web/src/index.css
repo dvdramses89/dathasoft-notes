@@ -337,6 +337,18 @@ code {
   color: #e0e7ff;
 }
 
+.tree-item--dragging {
+  opacity: 0.4;
+}
+
+.tree-item--drop-before {
+  box-shadow: inset 0 2px 0 var(--accent);
+}
+
+.tree-item--drop-after {
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
 .tree-chevron {
   display: inline-flex;
   align-items: center;

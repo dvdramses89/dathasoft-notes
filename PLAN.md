@@ -51,8 +51,10 @@ Repositorio remoto (ya creado): `https://github.com/dvdramses89/dathasoft-notes.
 - [~] 3.2 Web: sidebar en árbol (estilo Craft) — por sub-tareas:
   - [x] 3.2.a Árbol visible + expandir/contraer + selección + **crear** (la carpeta seleccionada es el padre; raíz si no hay selección). App shell con sidebar + contenido.
   - [x] 3.2.b Renombrar (inline) + borrar con **diálogo de modo** (subtree/single) cuando la carpeta tiene subcarpetas; confirmación simple si está vacía.
-  - [ ] 3.2.c Mover (drag o selector de destino) con diálogo de modo + reordenar.
+  - [x] 3.2.c Mover con **selector de destino** (modal, con modo subtree/single) + **reordenar entre hermanas con drag & drop** (endpoint `PATCH /categories/reorder`). Drag & drop entre carpetas distintas queda como mejora futura.
 - **Validación**: gestionar carpetas y subcarpetas en el sidebar. *(Commit + push)*
+
+> **Fase 3 cerrada.** Categorías completas: API (CRUD + modos + reorder) y sidebar (árbol, crear, renombrar, mover, borrar, reordenar).
 
 ## Fase 4 — Documentos + editor BlockNote
 - [ ] 4.1 Modelo `Document` + CRUD REST (guarda `contentJson` y `contentText`).
