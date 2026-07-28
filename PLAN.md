@@ -47,7 +47,7 @@ Repositorio remoto (ya creado): `https://github.com/dvdramses89/dathasoft-notes.
 > Nota: se decidió crear el esquema completo de una vez. Por eso, en las Fases 3–9 **las tablas ya existen**: esas fases solo construyen la **API + UI** sobre el modelo ya migrado (no vuelven a tocar el esquema salvo ajustes puntuales).
 
 ## Fase 3 — Categorías (árbol de carpetas estilo Craft)
-- [ ] 3.1 Modelo `Category` (jerárquico: `parentId`, `position`) + migración + CRUD REST.
+- [x] 3.1 CRUD REST de categorías (el modelo/migración ya existían): `POST/GET/PATCH/DELETE /api/categories`, protegido por JWT y scoped al owner. Árbol anidado, renombrar/color/icono/reordenar. **Mover** (`PATCH /:id/move`) y **borrar** (`DELETE /:id?mode=`) con dos modos: `subtree` (toda la estructura) o `single` (solo la carpeta; hijas suben al padre inmediato). Prevención de ciclos. Verificado (ambos modos).
 - [ ] 3.2 Web: sidebar en árbol con crear / renombrar / mover / borrar y orden manual.
 - **Validación**: gestionar carpetas y subcarpetas en el sidebar. *(Commit + push)*
 

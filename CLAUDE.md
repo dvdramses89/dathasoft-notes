@@ -71,6 +71,7 @@ CategoryShare     categoryId · collectiveId · permission(read|edit)
 ## Funcionalidades clave (requisitos)
 
 - **Categorías = carpetas jerárquicas gestionables** (crear/renombrar/mover/borrar; sidebar en árbol tipo Craft).
+  - Al **mover o borrar** una carpeta con subcarpetas, la app **pregunta el modo**: `subtree` (la carpeta y toda su estructura) o `single` (solo esa carpeta; sus hijas directas **suben** a colgar del padre inmediato). API: `PATCH /api/categories/:id/move` con `{parentId, mode}` y `DELETE /api/categories/:id?mode=subtree|single`.
 - **Tags = búsqueda enriquecida** transversal, combinable con búsqueda de texto (`contentText`).
 - **Buscador global**: busca en título + `contentText` (Postgres full-text) y filtra por tags/carpetas.
 - **Favoritos**: marcar documentos como favoritos (por usuario) con su sección en el sidebar.
