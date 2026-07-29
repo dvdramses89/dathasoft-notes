@@ -7,7 +7,15 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { createDocument, getDocuments, type DocumentListItem } from '../lib/api';
+import {
+  createDocument,
+  deleteDocument,
+  getDocuments,
+  moveDocument,
+  reorderDocuments,
+  updateDocument,
+  type DocumentListItem,
+} from '../lib/api';
 
 /** Clave del mapa de listados: 'root' para la raiz, o el id de la carpeta. */
 function keyOf(categoryId: string | null): string {
@@ -28,6 +36,14 @@ interface DocumentsContextValue {
   /** Vuelve a pedir el listado de una carpeta, este cargado o no. */
   refresh: (categoryId: string | null) => Promise<void>;
   create: (title: string, categoryId: string | null) => Promise<DocumentListItem>;
+  /** Renombra el documento. */
+  rename: (id: string, categoryId: string | null, title: string) => Promise<void>;
+  /** Mueve el documento a otra carpeta (null = raiz). */
+  move: (id: string, fromCategoryId: string | null, toCategoryId: string | null) => Promise<void>;
+  /** Envia el documento a la papelera. */
+  remove: (id: string, categoryId: string | null) => Promise<void>;
+  /** Reordena los documentos de una carpeta. */
+  reorder: (categoryId: string | null, orderedIds: string[]) => Promise<void>;
   /** Refleja en el listado un cambio ya guardado en la API (p. ej. el titulo). */
   patchLocal: (doc: DocumentListItem) => void;
 }
@@ -92,6 +108,67 @@ export function DocumentsProvider({ children }: { children: ReactNode }) {
     return doc;
   }, []);
 
+  const rename = useCallback(async (id: string, categoryId: string | null, title: string) => {
+    const updated = await updateDocument(id, { title });
+    const key = keyOf(categoryId);
+    setByCategory((prev) => {
+      const list = prev[key];
+      if (!list) {
+        return prev;
+      }
+      return { ...prev, [key]: list.map((d) => (d.id === id ? { ...d, title: updated.title } : d)) };
+    });
+  }, []);
+
+  const move = useCallback(
+    async (id: string, fromCategoryId: string | null, toCategoryId: string | null) => {
+      const moved = await moveDocument(id, toCategoryId);
+      const fromKey = keyOf(fromCategoryId);
+      const toKey = keyOf(toCategoryId);
+      setByCategory((prev) => {
+        const next = { ...prev };
+        // Sale del listado de origen.
+        if (next[fromKey]) {
+          next[fromKey] = next[fromKey].filter((d) => d.id !== id);
+        }
+        // Entra en el de destino solo si ya estaba cargado; si no, se traera
+        // al expandir esa carpeta.
+        if (next[toKey]) {
+          next[toKey] = [...next[toKey], { ...moved }];
+        }
+        return next;
+      });
+    },
+    [],
+  );
+
+  const remove = useCallback(async (id: string, categoryId: string | null) => {
+    await deleteDocument(id);
+    const key = keyOf(categoryId);
+    setByCategory((prev) => {
+      const list = prev[key];
+      if (!list) {
+        return prev;
+      }
+      return { ...prev, [key]: list.filter((d) => d.id !== id) };
+    });
+  }, []);
+
+  const reorder = useCallback(async (categoryId: string | null, orderedIds: string[]) => {
+    const key = keyOf(categoryId);
+    // Se reordena en local de inmediato (la API solo confirma el orden).
+    setByCategory((prev) => {
+      const list = prev[key];
+      if (!list) {
+        return prev;
+      }
+      const byId = new Map(list.map((d) => [d.id, d]));
+      const sorted = orderedIds.map((docId) => byId.get(docId)).filter(Boolean) as DocumentListItem[];
+      return { ...prev, [key]: sorted };
+    });
+    await reorderDocuments(categoryId, orderedIds);
+  }, []);
+
   const patchLocal = useCallback((doc: DocumentListItem) => {
     const key = keyOf(doc.categoryId);
     setByCategory((prev) => {
@@ -104,8 +181,19 @@ export function DocumentsProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo<DocumentsContextValue>(
-    () => ({ byCategory, loadingKeys, loadFor, refresh, create, patchLocal }),
-    [byCategory, loadingKeys, loadFor, refresh, create, patchLocal],
+    () => ({
+      byCategory,
+      loadingKeys,
+      loadFor,
+      refresh,
+      create,
+      rename,
+      move,
+      remove,
+      reorder,
+      patchLocal,
+    }),
+    [byCategory, loadingKeys, loadFor, refresh, create, rename, move, remove, reorder, patchLocal],
   );
 
   return <DocumentsContext.Provider value={value}>{children}</DocumentsContext.Provider>;

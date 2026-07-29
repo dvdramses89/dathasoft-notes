@@ -4,6 +4,7 @@ import { useAuth } from '../auth/AuthContext';
 import { useCategories } from '../categories/CategoriesContext';
 import { useDocuments } from '../documents/DocumentsContext';
 import type { CategoryNode, DocumentListItem, TreeMode } from '../lib/api';
+import { MoveDocumentModal } from './MoveDocumentModal';
 import { MoveModal } from './MoveModal';
 
 type DropPos = 'before' | 'after';
@@ -126,31 +127,115 @@ function RenameInput({
   );
 }
 
-/** Fila de documento dentro del arbol. */
-function DocItem({
-  doc,
-  depth,
-  active,
-  onOpen,
-}: {
+interface DocItemProps {
   doc: DocumentListItem;
   depth: number;
   active: boolean;
+  editing: boolean;
   onOpen: (id: string) => void;
-}) {
+  onStartRename: (id: string) => void;
+  onSubmitRename: (doc: DocumentListItem, title: string) => void;
+  onCancelRename: () => void;
+  onRequestMove: (doc: DocumentListItem) => void;
+  onRequestDelete: (doc: DocumentListItem) => void;
+  dragDocId: string | null;
+  dropIndicator: DropIndicator | null;
+  onDragStart: (doc: DocumentListItem) => void;
+  onDragOver: (e: DragEvent<HTMLDivElement>, doc: DocumentListItem) => void;
+  onDrop: (doc: DocumentListItem) => void;
+  onDragEnd: () => void;
+}
+
+/** Fila de documento dentro del arbol. */
+function DocItem(props: DocItemProps) {
+  const { doc, depth, active, editing, dragDocId, dropIndicator } = props;
+  const isDragging = dragDocId === doc.id;
+  const dropBefore = dropIndicator?.id === doc.id && dropIndicator.pos === 'before';
+  const dropAfter = dropIndicator?.id === doc.id && dropIndicator.pos === 'after';
+
+  const classes = [
+    'tree-item',
+    'tree-item--doc',
+    active ? 'tree-item--active' : '',
+    isDragging ? 'tree-item--dragging' : '',
+    dropBefore ? 'tree-item--drop-before' : '',
+    dropAfter ? 'tree-item--drop-after' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+
   return (
     <li>
       <div
-        className={`tree-item tree-item--doc${active ? ' tree-item--active' : ''}`}
+        className={classes}
         style={{ paddingLeft: `${depth * 14 + 8}px` }}
+        draggable={!editing}
         onClick={(e) => {
           e.stopPropagation();
-          onOpen(doc.id);
+          props.onOpen(doc.id);
         }}
+        onDragStart={(e) => {
+          e.stopPropagation();
+          props.onDragStart(doc);
+        }}
+        onDragOver={(e) => props.onDragOver(e, doc)}
+        onDrop={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          props.onDrop(doc);
+        }}
+        onDragEnd={props.onDragEnd}
       >
         <span className="tree-chevron" />
         <DocIcon />
-        <span className="tree-name">{doc.title}</span>
+
+        {editing ? (
+          <RenameInput
+            initial={doc.title}
+            onSubmit={(title) => props.onSubmitRename(doc, title)}
+            onCancel={props.onCancelRename}
+          />
+        ) : (
+          <span className="tree-name">{doc.title}</span>
+        )}
+
+        {!editing && (
+          <span className="tree-actions">
+            <button
+              className="tree-action"
+              type="button"
+              title="Renombrar"
+              onClick={(e) => {
+                e.stopPropagation();
+                props.onStartRename(doc.id);
+              }}
+            >
+              <PencilIcon />
+            </button>
+            <button
+              className="tree-action"
+              type="button"
+              title="Mover a otra carpeta"
+              onClick={(e) => {
+                e.stopPropagation();
+                props.onRequestMove(doc);
+              }}
+            >
+              <MoveIcon />
+            </button>
+            <button
+              className="tree-action"
+              type="button"
+              title="Enviar a la papelera"
+              onClick={(e) => {
+                e.stopPropagation();
+                props.onRequestDelete(doc);
+              }}
+            >
+              <TrashIcon />
+            </button>
+          </span>
+        )}
       </div>
     </li>
   );
@@ -166,6 +251,9 @@ interface TreeItemProps {
   loadingDocKeys: Set<string>;
   openDocId: string | null;
   onOpenDoc: (id: string) => void;
+  /** Props de gestión de documentos, reenviadas tal cual a cada DocItem. */
+  docActions: Omit<DocItemProps, 'doc' | 'depth' | 'active' | 'editing' | 'onOpen'>;
+  editingDocId: string | null;
   onSelect: (id: string) => void;
   onToggle: (id: string) => void;
   onStartRename: (id: string) => void;
@@ -295,9 +383,11 @@ function TreeItem(props: TreeItemProps) {
           {(docs ?? []).map((doc) => (
             <DocItem
               key={doc.id}
+              {...props.docActions}
               doc={doc}
               depth={depth + 1}
               active={props.openDocId === doc.id}
+              editing={props.editingDocId === doc.id}
               onOpen={props.onOpenDoc}
             />
           ))}
@@ -328,7 +418,16 @@ export function Sidebar() {
     reorder,
   } = useCategories();
   const { user, logout } = useAuth();
-  const { byCategory, loadingKeys, loadFor, create: createDoc } = useDocuments();
+  const {
+    byCategory,
+    loadingKeys,
+    loadFor,
+    create: createDoc,
+    rename: renameDoc,
+    move: moveDoc,
+    remove: removeDoc,
+    reorder: reorderDocs,
+  } = useDocuments();
   const navigate = useNavigate();
   const { id: openDocId } = useParams();
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -341,6 +440,12 @@ export function Sidebar() {
   const [dragId, setDragId] = useState<string | null>(null);
   const [dragParent, setDragParent] = useState<string | null>(null);
   const [dropIndicator, setDropIndicator] = useState<DropIndicator | null>(null);
+  // Estado propio de los documentos (renombrar, mover, borrar, arrastrar).
+  const [editingDocId, setEditingDocId] = useState<string | null>(null);
+  const [deleteDocTarget, setDeleteDocTarget] = useState<DocumentListItem | null>(null);
+  const [moveDocTarget, setMoveDocTarget] = useState<DocumentListItem | null>(null);
+  const [dragDoc, setDragDoc] = useState<DocumentListItem | null>(null);
+  const [docDropIndicator, setDocDropIndicator] = useState<DropIndicator | null>(null);
 
   // Los documentos de la raíz se ven siempre (no cuelgan de ningún chevron),
   // así que se cargan al arrancar, pero solo si el árbol dice que hay alguno.
@@ -423,6 +528,84 @@ export function Sidebar() {
     }
   }
 
+  // ---- Gestión de documentos (renombrar / mover / borrar) ----
+
+  function submitDocRename(doc: DocumentListItem, title: string) {
+    setEditingDocId(null);
+    if (title && title !== doc.title) {
+      void renameDoc(doc.id, doc.categoryId, title);
+    }
+  }
+
+  async function confirmDocDelete() {
+    const doc = deleteDocTarget;
+    setDeleteDocTarget(null);
+    if (!doc) {
+      return;
+    }
+    await removeDoc(doc.id, doc.categoryId);
+    await reloadTree(); // el contador de la carpeta baja
+    // Si el documento borrado era el que estaba abierto, salimos de su ruta.
+    if (openDocId === doc.id) {
+      navigate('/');
+    }
+  }
+
+  async function confirmDocMove(categoryId: string | null) {
+    const doc = moveDocTarget;
+    setMoveDocTarget(null);
+    if (!doc) {
+      return;
+    }
+    await moveDoc(doc.id, doc.categoryId, categoryId);
+    await reloadTree(); // cambian los contadores de origen y destino
+    if (categoryId) {
+      // Si la carpeta destino no estaba cargada, hay que traer su listado:
+      // al expandirla aquí no pasamos por `toggle`, que es quien lo pide.
+      await loadFor(categoryId);
+      setExpanded((prev) => new Set(prev).add(categoryId));
+    }
+  }
+
+  // ---- Drag & drop para reordenar documentos de una misma carpeta ----
+
+  function clearDocDrag() {
+    setDragDoc(null);
+    setDocDropIndicator(null);
+  }
+
+  function handleDocDragOver(e: DragEvent<HTMLDivElement>, target: DocumentListItem) {
+    // Solo se reordena entre documentos de la misma carpeta.
+    if (dragDoc && target.categoryId === dragDoc.categoryId && target.id !== dragDoc.id) {
+      e.preventDefault();
+      const rect = e.currentTarget.getBoundingClientRect();
+      const pos: DropPos = e.clientY < rect.top + rect.height / 2 ? 'before' : 'after';
+      setDocDropIndicator({ id: target.id, pos });
+    }
+  }
+
+  function handleDocDrop(target: DocumentListItem) {
+    if (
+      !dragDoc ||
+      !docDropIndicator ||
+      target.categoryId !== dragDoc.categoryId ||
+      target.id === dragDoc.id
+    ) {
+      clearDocDrag();
+      return;
+    }
+    const key = dragDoc.categoryId ?? 'root';
+    const ids = (byCategory[key] ?? []).map((d) => d.id).filter((id) => id !== dragDoc.id);
+    const idx = ids.indexOf(target.id);
+    if (idx === -1) {
+      clearDocDrag();
+      return;
+    }
+    ids.splice(docDropIndicator.pos === 'before' ? idx : idx + 1, 0, dragDoc.id);
+    void reorderDocs(dragDoc.categoryId, ids);
+    clearDocDrag();
+  }
+
   /** Descarta la creación de carpeta en curso. */
   function cancelNew() {
     setAdding(false);
@@ -490,6 +673,21 @@ export function Sidebar() {
     void reorder(dragParent, ids);
     clearDrag();
   }
+
+  // Acciones comunes a todas las filas de documento.
+  const docActions = {
+    onStartRename: setEditingDocId,
+    onSubmitRename: submitDocRename,
+    onCancelRename: () => setEditingDocId(null),
+    onRequestMove: setMoveDocTarget,
+    onRequestDelete: setDeleteDocTarget,
+    dragDocId: dragDoc?.id ?? null,
+    dropIndicator: docDropIndicator,
+    onDragStart: setDragDoc,
+    onDragOver: handleDocDragOver,
+    onDrop: handleDocDrop,
+    onDragEnd: clearDocDrag,
+  };
 
   return (
     <aside className="sidebar">
@@ -587,6 +785,8 @@ export function Sidebar() {
                 loadingDocKeys={loadingKeys}
                 openDocId={openDocId ?? null}
                 onOpenDoc={openDoc}
+                docActions={docActions}
+                editingDocId={editingDocId}
                 onSelect={selectCategory}
                 onToggle={toggle}
                 onStartRename={setEditingId}
@@ -606,9 +806,11 @@ export function Sidebar() {
             {rootDocs.map((doc) => (
               <DocItem
                 key={doc.id}
+                {...docActions}
                 doc={doc}
                 depth={0}
                 active={openDocId === doc.id}
+                editing={editingDocId === doc.id}
                 onOpen={openDoc}
               />
             ))}
@@ -666,6 +868,39 @@ export function Sidebar() {
             )}
           </div>
         </div>
+      )}
+
+      {deleteDocTarget && (
+        <div className="modal-overlay" onClick={() => setDeleteDocTarget(null)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h3 className="modal-title">Eliminar «{deleteDocTarget.title}»</h3>
+            <p className="modal-text">
+              El documento se enviará a la papelera; podrás restaurarlo más adelante.
+            </p>
+            <div className="modal-actions">
+              <button
+                className="btn btn--ghost"
+                type="button"
+                onClick={() => setDeleteDocTarget(null)}
+              >
+                Cancelar
+              </button>
+              <button className="btn btn--danger" type="button" onClick={() => void confirmDocDelete()}>
+                Eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {moveDocTarget && (
+        <MoveDocumentModal
+          title={moveDocTarget.title}
+          currentCategoryId={moveDocTarget.categoryId}
+          tree={tree}
+          onCancel={() => setMoveDocTarget(null)}
+          onConfirm={(categoryId) => void confirmDocMove(categoryId)}
+        />
       )}
 
       {moveTarget && (

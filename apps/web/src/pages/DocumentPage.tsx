@@ -25,7 +25,7 @@ function asBlocks(contentJson: unknown): PartialBlock[] | undefined {
 
 export function DocumentPage() {
   const { id } = useParams();
-  const { patchLocal } = useDocuments();
+  const { patchLocal, byCategory } = useDocuments();
   const [doc, setDoc] = useState<DocumentFull | null>(null);
   const [title, setTitle] = useState('');
   const [loading, setLoading] = useState(true);
@@ -33,6 +33,7 @@ export function DocumentPage() {
   const [saveState, setSaveState] = useState<SaveState>('idle');
   // Id del documento en pantalla, para que un guardado tardío no escriba en otro.
   const currentId = useRef<string | undefined>(undefined);
+  const titleRef = useRef<HTMLInputElement | null>(null);
 
   // Carga del documento al abrirlo (o al cambiar de documento).
   useEffect(() => {
@@ -66,6 +67,23 @@ export function DocumentPage() {
       cancelled = true;
     };
   }, [id]);
+
+  // Si el documento abierto se renombra desde el sidebar, el título de la
+  // página lo sigue (salvo mientras se está editando aquí).
+  const listedTitle = doc
+    ? Object.values(byCategory)
+        .flat()
+        .find((d) => d.id === doc.id)?.title
+    : undefined;
+  useEffect(() => {
+    if (doc && listedTitle && listedTitle !== doc.title) {
+      setDoc((prev) => (prev ? { ...prev, title: listedTitle } : prev));
+      // No se pisa el campo si el usuario está escribiendo en él ahora mismo.
+      if (document.activeElement !== titleRef.current) {
+        setTitle(listedTitle);
+      }
+    }
+  }, [listedTitle, doc]);
 
   /** Guarda el título si ha cambiado (al salir del campo o con Enter). */
   const saveTitle = useCallback(async () => {
@@ -138,6 +156,7 @@ export function DocumentPage() {
     <div className="content-inner">
       <div className="doc-header">
         <input
+          ref={titleRef}
           className="doc-title-input"
           value={title}
           placeholder="Documento sin título"
