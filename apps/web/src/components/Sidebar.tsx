@@ -352,14 +352,18 @@ export function Sidebar() {
   }, [rootDocumentCount, loadFor]);
 
   function toggle(id: string) {
+    // Al expandir se piden sus documentos (solo la primera vez). Va fuera del
+    // updater de setExpanded: ese callback corre en fase de render y no debe
+    // provocar cambios de estado en otro componente.
+    if (!expanded.has(id)) {
+      void loadFor(id);
+    }
     setExpanded((prev) => {
       const next = new Set(prev);
       if (next.has(id)) {
         next.delete(id);
       } else {
         next.add(id);
-        // Al expandir se piden sus documentos (solo la primera vez).
-        void loadFor(id);
       }
       return next;
     });

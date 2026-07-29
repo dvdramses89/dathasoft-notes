@@ -748,21 +748,144 @@ code {
   color: var(--error);
 }
 
-.doc-editor-placeholder {
-  border: 1px dashed rgba(148, 163, 184, 0.25);
-  border-radius: 12px;
-  padding: 1.25rem;
+/* ---------- Editor BlockNote ---------- */
+
+/* El tema oscuro del editor trae grises calidos propios; los remapeamos a la
+   paleta azul de la app para que no parezca una caja pegada encima. */
+.doc-editor {
+  margin: 0 -0.5rem;
 }
 
-.doc-content-preview {
-  margin: 1rem 0 0;
-  padding: 0.9rem;
-  background: rgba(15, 23, 42, 0.6);
-  border-radius: 8px;
-  color: #cbd5e1;
-  font-size: 0.85rem;
-  white-space: pre-wrap;
-  word-break: break-word;
+/* Se aplica a todo `.bn-root.dark` (no solo al contenedor del editor) porque
+   los menus flotantes —barra de formato, menu "/", tooltips— se montan en su
+   propio `.bn-root` anidado, que no lleva el atributo data-color-scheme. */
+.bn-root.dark {
+  --bn-colors-editor-background: transparent;
+  --bn-colors-editor-text: #e2e8f0;
+  --bn-colors-side-menu: #64748b;
+  --bn-colors-menu-background: #1e293b;
+  --bn-colors-menu-text: #e2e8f0;
+  --bn-colors-tooltip-background: #0f172a;
+  --bn-colors-tooltip-text: #e2e8f0;
+  --bn-colors-hovered-background: #243149;
+  --bn-colors-hovered-text: #e2e8f0;
+  --bn-colors-selected-background: #6366f1;
+  --bn-colors-selected-text: #ffffff;
+  --bn-colors-disabled-background: #1e293b;
+  --bn-colors-disabled-text: #64748b;
+  --bn-colors-shadow: rgba(2, 6, 23, 0.6);
+  --bn-colors-border: rgba(148, 163, 184, 0.2);
+  --bn-colors-highlights-gray-background: #334155;
+  font-family: inherit;
+}
+
+/* El editor trae su propio padding lateral; lo reducimos para alinear el texto
+   con el titulo del documento. */
+.doc-editor .bn-editor {
+  padding-inline: 0.5rem;
+  background: transparent;
+}
+
+/* El placeholder del bloque vacio, mas discreto */
+.doc-editor .bn-block-content[data-is-empty-and-focused] p::before {
+  color: var(--muted);
+}
+
+/* Menus del editor (menu "/", barra de formato, desplegables). Ariakit fija
+   estos colores en su hoja de estilos con valores propios, asi que se
+   sobreescriben aqui para alinearlos con la paleta de la app. */
+.bn-root.dark .bn-ak-menu,
+.bn-root.dark .bn-ak-popover,
+.bn-root.dark .bn-ak-toolbar {
+  background-color: var(--card);
+  border-color: rgba(148, 163, 184, 0.2);
+  color: var(--text);
+  box-shadow: 0 12px 28px rgba(2, 6, 23, 0.55);
+}
+
+/* ---- Barra flotante de formato (al seleccionar texto) ----
+   Ariakit la deja con `overflow: scroll` fijo (barras siempre visibles) y
+   botones de 2.5rem. Se compacta y se dejan envolver los controles en varias
+   filas si no caben, en lugar de recortarlos con scroll. */
+.bn-root .bn-ak-toolbar {
+  overflow: visible;
+  flex-wrap: wrap;
+  /* Ancho suficiente para que los controles quepan en una sola fila, pero
+     limitado al espacio visible junto al sidebar: en ventanas estrechas
+     envuelve a otra fila en lugar de recortarse con scroll. */
+  max-width: min(34rem, calc(100vw - 2rem));
+  gap: 0.15rem;
+  padding: 0.3rem;
+  border-radius: 10px;
+  height: auto;
+  justify-content: flex-start;
+}
+
+.bn-root .bn-ak-toolbar .bn-ak-button {
+  height: 1.75rem;
+  min-width: 1.75rem;
+  padding: 0 0.4rem;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  line-height: 1.2;
+  /* Ariakit dibuja el relieve con box-shadow; se quita para un look plano. */
+  box-shadow: none;
+  background-color: transparent;
+  color: var(--text);
+}
+
+.bn-root .bn-ak-toolbar .bn-ak-button svg {
+  width: 15px;
+  height: 15px;
+}
+
+.bn-root.dark .bn-ak-toolbar .bn-ak-button:hover {
+  background-color: rgba(148, 163, 184, 0.16);
+}
+
+/* Botón activo (negrita aplicada, alineación actual…) */
+.bn-root.dark .bn-ak-toolbar .bn-ak-button[data-selected] {
+  background-color: rgba(99, 102, 241, 0.28);
+  color: #e0e7ff;
+  box-shadow: none;
+  padding-top: 0;
+}
+
+/* El desplegable de tipo de bloque ("Párrafo") viene con width: 200px fijo */
+.bn-root .bn-ak-toolbar .bn-ak-select > .bn-ak-button,
+.bn-root .bn-ak-toolbar .bn-ak-button.bn-ak-select {
+  width: auto;
+  min-width: 0;
+  gap: 0.25rem;
+}
+
+/* El item resaltado del menu: ariakit lo pinta en cian. En el menu "/" el
+   item marcado usa aria-selected; en los desplegables, data-active-item. */
+.bn-root.dark .bn-ak-menu-item[aria-selected='true'],
+.bn-root.dark .bn-ak-menu-item[data-active-item],
+.bn-root.dark .bn-ak-select-item[aria-selected='true'],
+.bn-root.dark .bn-ak-select-item[data-active-item] {
+  background-color: var(--accent);
+  color: #fff;
+}
+
+.bn-root.dark .bn-ak-group-label {
+  color: var(--muted);
+}
+
+.bn-root.dark .bn-ak-badge {
+  background-color: rgba(148, 163, 184, 0.16);
+  color: var(--muted);
+}
+
+.bn-root.dark .bn-ak-button:hover {
+  background-color: rgba(148, 163, 184, 0.14);
+}
+
+.bn-root.dark .bn-ak-input {
+  background-color: rgba(15, 23, 42, 0.7);
+  border-color: rgba(148, 163, 184, 0.25);
+  color: var(--text);
 }
 
 /* Responsive: en pantallas estrechas el sidebar se estrecha */

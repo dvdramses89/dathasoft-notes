@@ -1,5 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
+import type { Block, PartialBlock } from '@blocknote/core';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import { DocumentEditor } from '../documents/DocumentEditor';
 import { useDocuments } from '../documents/DocumentsContext';
 import { getDocument, updateDocument, type DocumentFull } from '../lib/api';
 
@@ -14,6 +16,13 @@ function SaveIndicator({ state }: { state: SaveState }) {
   return <span className={`save-indicator save-indicator--${state}`}>{text}</span>;
 }
 
+/** El contenido guardado es un array de bloques de BlockNote (o algo vacío). */
+function asBlocks(contentJson: unknown): PartialBlock[] | undefined {
+  return Array.isArray(contentJson) && contentJson.length > 0
+    ? (contentJson as PartialBlock[])
+    : undefined;
+}
+
 export function DocumentPage() {
   const { id } = useParams();
   const { patchLocal } = useDocuments();
@@ -22,6 +31,8 @@ export function DocumentPage() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [saveState, setSaveState] = useState<SaveState>('idle');
+  // Id del documento en pantalla, para que un guardado tardío no escriba en otro.
+  const currentId = useRef<string | undefined>(undefined);
 
   // Carga del documento al abrirlo (o al cambiar de documento).
   useEffect(() => {
@@ -29,6 +40,7 @@ export function DocumentPage() {
       return;
     }
     let cancelled = false;
+    currentId.current = id;
     setLoading(true);
     setNotFound(false);
     setSaveState('idle');
@@ -77,6 +89,30 @@ export function DocumentPage() {
     }
   }, [doc, title, patchLocal]);
 
+  /** Guarda el contenido del editor (autoguardado con pausa al escribir). */
+  const saveContent = useCallback(
+    (contentJson: Block[], contentText: string) => {
+      const docId = currentId.current;
+      if (!docId) {
+        return;
+      }
+      setSaveState('saving');
+      updateDocument(docId, { contentJson, contentText })
+        .then(() => {
+          // Si mientras se guardaba se abrió otro documento, no tocamos su estado.
+          if (currentId.current === docId) {
+            setSaveState('saved');
+          }
+        })
+        .catch(() => {
+          if (currentId.current === docId) {
+            setSaveState('error');
+          }
+        });
+    },
+    [],
+  );
+
   if (loading) {
     return (
       <div className="content-inner">
@@ -119,14 +155,13 @@ export function DocumentPage() {
         <SaveIndicator state={saveState} />
       </div>
 
-      {/* Provisional: el editor BlockNote llega en la siguiente subtarea (4.2.b). */}
-      <div className="doc-editor-placeholder">
-        <p className="content-subtitle">
-          El editor enriquecido (BlockNote) se añade en el siguiente paso. Por ahora se muestra el
-          contenido guardado en texto plano.
-        </p>
-        <pre className="doc-content-preview">{doc.contentText || '(documento vacío)'}</pre>
-      </div>
+      {/* La key remonta el editor al cambiar de documento: el contenido inicial
+          de BlockNote se fija al crearlo y no es reactivo. */}
+      <DocumentEditor
+        key={doc.id}
+        initialContent={asBlocks(doc.contentJson)}
+        onSave={saveContent}
+      />
     </div>
   );
 }
