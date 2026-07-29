@@ -12,7 +12,16 @@ export interface CategoryNode {
   color: string | null;
   position: number;
   parentId: string | null;
+  /** Documentos directos de esta carpeta (sin contar los de sus subcarpetas). */
+  documentCount: number;
   children: CategoryNode[];
+}
+
+/** Arbol de carpetas + documentos sueltos en la raiz. */
+export interface CategoryTreeResult {
+  tree: CategoryNode[];
+  /** Documentos que viven en la raiz (fuera de cualquier carpeta). */
+  rootDocumentCount: number;
 }
 
 @Injectable()
@@ -36,12 +45,36 @@ export class CategoriesService {
     });
   }
 
-  async tree(ownerId: string): Promise<CategoryNode[]> {
-    const cats = await this.prisma.category.findMany({
-      where: { ownerId, deletedAt: null },
-      orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
-    });
-    return this.buildTree(cats);
+  /**
+   * Arbol de carpetas del usuario con el numero de documentos de cada una.
+   * El contador permite al front saber si una carpeta tiene contenido sin
+   * cargar sus documentos: estos se piden solo al expandirla.
+   */
+  async tree(ownerId: string): Promise<CategoryTreeResult> {
+    const [cats, counts] = await Promise.all([
+      this.prisma.category.findMany({
+        where: { ownerId, deletedAt: null },
+        orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
+      }),
+      // Una sola consulta agrupada: documentos vivos por carpeta (incluida la raiz).
+      this.prisma.document.groupBy({
+        by: ['categoryId'],
+        where: { ownerId, deletedAt: null },
+        _count: { _all: true },
+      }),
+    ]);
+
+    const countByCategory = new Map<string, number>();
+    let rootDocumentCount = 0;
+    for (const row of counts) {
+      if (row.categoryId === null) {
+        rootDocumentCount = row._count._all;
+      } else {
+        countByCategory.set(row.categoryId, row._count._all);
+      }
+    }
+
+    return { tree: this.buildTree(cats, countByCategory), rootDocumentCount };
   }
 
   // Edicion en el sitio (no cambia de carpeta padre).
@@ -203,7 +236,7 @@ export class CategoriesService {
     return result;
   }
 
-  private buildTree(cats: Category[]): CategoryNode[] {
+  private buildTree(cats: Category[], countByCategory: Map<string, number>): CategoryNode[] {
     const nodes = new Map<string, CategoryNode>();
     for (const c of cats) {
       nodes.set(c.id, {
@@ -213,6 +246,7 @@ export class CategoriesService {
         color: c.color,
         position: c.position,
         parentId: c.parentId,
+        documentCount: countByCategory.get(c.id) ?? 0,
         children: [],
       });
     }

@@ -58,7 +58,10 @@ Repositorio remoto (ya creado): `https://github.com/dvdramses89/dathasoft-notes.
 
 ## Fase 4 — Documentos + editor BlockNote
 - [x] 4.1 CRUD REST de documentos (el modelo/migración ya existían): `POST /api/documents`, `GET /api/documents` (listado ligero, filtro `?categoryId=<uuid>|root`), `GET /api/documents/:id` (con `contentJson`), `PATCH /:id` (guardar título/contenido), `PATCH /:id/move` (cambiar de carpeta), `PATCH /documents/reorder` (orden dentro de la carpeta), `DELETE /:id` (papelera, soft-delete). Todo protegido por JWT y scoped al owner. Verificado con 47 comprobaciones (incluido aislamiento entre usuarios y recálculo automático del `searchVector`).
-- [ ] 4.2 Web: editor **BlockNote** para crear/editar/guardar un documento dentro de una carpeta.
+- [~] 4.2 Web: editor **BlockNote** para crear/editar/guardar un documento dentro de una carpeta — por sub-tareas:
+  - [x] 4.2.a Documentos en el sidebar (**carga perezosa**: los documentos de una carpeta se piden al expandirla) + botón de nuevo documento + apertura en `/documents/:id` con título editable y guardado. El árbol (`GET /categories`) devuelve `{tree, rootDocumentCount}` con `documentCount` por carpeta (una consulta agrupada), para saber si una carpeta tiene contenido sin cargar sus documentos: carpeta vacía = sin chevron. Selección única en el árbol (carpeta o documento, nunca los dos). Formulario de nueva carpeta con Crear/Cancelar.
+  - [ ] 4.2.b Editor **BlockNote** con guardado del contenido.
+  - [ ] 4.2.c Gestión de documentos desde la UI: renombrar, mover, borrar (papelera) y reordenar.
 - [ ] 4.3 Comprobar Markdown y **código con resaltado multi-lenguaje** en el editor.
 - **Validación**: crear un documento en una carpeta, escribir texto enriquecido y código, guardarlo y reabrirlo. *(Commit + push)*
 

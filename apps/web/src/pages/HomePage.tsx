@@ -11,7 +11,8 @@ export function HomePage() {
         <div className="content-header">
           <h1 className="content-title">{selectedNode.name}</h1>
           <p className="content-subtitle">
-            Carpeta seleccionada · los documentos se mostrarán aquí (próxima fase).
+            Carpeta seleccionada. Despliégala en el panel izquierdo para ver sus documentos, o crea
+            uno nuevo con el botón de documento.
           </p>
         </div>
       ) : (

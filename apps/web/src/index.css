@@ -193,6 +193,15 @@ code {
   border-color: transparent;
 }
 
+/* Variante compacta, para acciones en linea (p. ej. el sidebar) */
+.btn--sm {
+  width: auto;
+  padding: 0.35rem 0.75rem;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
 .switch {
   margin: 1.5rem 0 0;
   color: var(--muted);
@@ -291,6 +300,13 @@ code {
 .add-folder-input:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+}
+
+.add-folder-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.4rem;
+  margin-top: 0.45rem;
 }
 
 .tree {
@@ -648,6 +664,105 @@ code {
   margin: 0.4rem 0 0;
   color: var(--muted);
   font-size: 0.95rem;
+}
+
+/* ---------- Documentos: filas del arbol ---------- */
+
+.sidebar-top-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.doc-icon {
+  flex-shrink: 0;
+  color: #94a3b8;
+}
+
+.tree-item--doc .tree-name {
+  color: #cbd5e1;
+}
+
+.tree-item--active {
+  background: rgba(99, 102, 241, 0.28);
+  color: #e0e7ff;
+}
+
+.tree-item--active .doc-icon {
+  color: #a5b4fc;
+}
+
+.tree-hint {
+  list-style: none;
+  color: var(--muted);
+  font-size: 0.78rem;
+  padding: 0.3rem 0.5rem;
+  font-style: italic;
+}
+
+/* ---------- Pagina del documento ---------- */
+
+.doc-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.doc-title-input {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 0.4rem 0.55rem;
+  margin-left: -0.55rem;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 1.6rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.doc-title-input:hover {
+  border-color: rgba(148, 163, 184, 0.2);
+}
+
+.doc-title-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: rgba(15, 23, 42, 0.5);
+}
+
+.save-indicator {
+  flex-shrink: 0;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.save-indicator--saved {
+  color: var(--ok);
+}
+
+.save-indicator--error {
+  color: var(--error);
+}
+
+.doc-editor-placeholder {
+  border: 1px dashed rgba(148, 163, 184, 0.25);
+  border-radius: 12px;
+  padding: 1.25rem;
+}
+
+.doc-content-preview {
+  margin: 1rem 0 0;
+  padding: 0.9rem;
+  background: rgba(15, 23, 42, 0.6);
+  border-radius: 8px;
+  color: #cbd5e1;
+  font-size: 0.85rem;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 /* Responsive: en pantallas estrechas el sidebar se estrecha */

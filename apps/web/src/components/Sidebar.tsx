@@ -1,7 +1,9 @@
-import { useState, type DragEvent, type KeyboardEvent, type MouseEvent } from 'react';
+import { useEffect, useState, type DragEvent, type KeyboardEvent, type MouseEvent } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { useCategories } from '../categories/CategoriesContext';
-import type { CategoryNode, TreeMode } from '../lib/api';
+import { useDocuments } from '../documents/DocumentsContext';
+import type { CategoryNode, DocumentListItem, TreeMode } from '../lib/api';
 import { MoveModal } from './MoveModal';
 
 type DropPos = 'before' | 'after';
@@ -32,6 +34,17 @@ function FolderIcon() {
       <path
         fill="currentColor"
         d="M10 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-8l-2-2Z"
+      />
+    </svg>
+  );
+}
+
+function DocIcon() {
+  return (
+    <svg className="doc-icon" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
+      <path
+        fill="currentColor"
+        d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6Zm0 2.5L17.5 8H14V4.5ZM8 13h8v1.5H8V13Zm0 3.5h8V18H8v-1.5Z"
       />
     </svg>
   );
@@ -113,12 +126,46 @@ function RenameInput({
   );
 }
 
+/** Fila de documento dentro del arbol. */
+function DocItem({
+  doc,
+  depth,
+  active,
+  onOpen,
+}: {
+  doc: DocumentListItem;
+  depth: number;
+  active: boolean;
+  onOpen: (id: string) => void;
+}) {
+  return (
+    <li>
+      <div
+        className={`tree-item tree-item--doc${active ? ' tree-item--active' : ''}`}
+        style={{ paddingLeft: `${depth * 14 + 8}px` }}
+        onClick={(e) => {
+          e.stopPropagation();
+          onOpen(doc.id);
+        }}
+      >
+        <span className="tree-chevron" />
+        <DocIcon />
+        <span className="tree-name">{doc.title}</span>
+      </div>
+    </li>
+  );
+}
+
 interface TreeItemProps {
   node: CategoryNode;
   depth: number;
   selectedId: string | null;
   expanded: Set<string>;
   editingId: string | null;
+  docsByCategory: Record<string, DocumentListItem[]>;
+  loadingDocKeys: Set<string>;
+  openDocId: string | null;
+  onOpenDoc: (id: string) => void;
   onSelect: (id: string) => void;
   onToggle: (id: string) => void;
   onStartRename: (id: string) => void;
@@ -136,7 +183,12 @@ interface TreeItemProps {
 
 function TreeItem(props: TreeItemProps) {
   const { node, depth, selectedId, expanded, editingId, dragId, dropIndicator } = props;
-  const hasChildren = node.children.length > 0;
+  // Los documentos llegan al expandir; hasta entonces la clave no existe.
+  const docs = props.docsByCategory[node.id];
+  const loadingDocs = props.loadingDocKeys.has(node.id);
+  // Chevron segun el contador que viene con el arbol: sabemos si la carpeta
+  // tiene contenido sin haber cargado ni un documento.
+  const hasChildren = node.children.length > 0 || node.documentCount > 0;
   const isOpen = expanded.has(node.id);
   const isSelected = selectedId === node.id;
   const isEditing = editingId === node.id;
@@ -240,6 +292,20 @@ function TreeItem(props: TreeItemProps) {
           {node.children.map((child) => (
             <TreeItem key={child.id} {...props} node={child} depth={depth + 1} />
           ))}
+          {(docs ?? []).map((doc) => (
+            <DocItem
+              key={doc.id}
+              doc={doc}
+              depth={depth + 1}
+              active={props.openDocId === doc.id}
+              onOpen={props.onOpenDoc}
+            />
+          ))}
+          {docs === undefined && loadingDocs && (
+            <li className="tree-hint" style={{ paddingLeft: `${(depth + 1) * 14 + 8}px` }}>
+              Cargando…
+            </li>
+          )}
         </ul>
       )}
     </li>
@@ -247,9 +313,24 @@ function TreeItem(props: TreeItemProps) {
 }
 
 export function Sidebar() {
-  const { tree, loading, selectedId, selectedNode, select, create, rename, remove, move, reorder } =
-    useCategories();
+  const {
+    tree,
+    rootDocumentCount,
+    loading,
+    selectedId,
+    selectedNode,
+    select,
+    reload: reloadTree,
+    create,
+    rename,
+    remove,
+    move,
+    reorder,
+  } = useCategories();
   const { user, logout } = useAuth();
+  const { byCategory, loadingKeys, loadFor, create: createDoc } = useDocuments();
+  const navigate = useNavigate();
+  const { id: openDocId } = useParams();
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [adding, setAdding] = useState(false);
   const [newName, setNewName] = useState('');
@@ -261,6 +342,15 @@ export function Sidebar() {
   const [dragParent, setDragParent] = useState<string | null>(null);
   const [dropIndicator, setDropIndicator] = useState<DropIndicator | null>(null);
 
+  // Los documentos de la raíz se ven siempre (no cuelgan de ningún chevron),
+  // así que se cargan al arrancar, pero solo si el árbol dice que hay alguno.
+  const rootDocs = byCategory.root ?? [];
+  useEffect(() => {
+    if (rootDocumentCount > 0) {
+      void loadFor(null);
+    }
+  }, [rootDocumentCount, loadFor]);
+
   function toggle(id: string) {
     setExpanded((prev) => {
       const next = new Set(prev);
@@ -268,9 +358,47 @@ export function Sidebar() {
         next.delete(id);
       } else {
         next.add(id);
+        // Al expandir se piden sus documentos (solo la primera vez).
+        void loadFor(id);
       }
       return next;
     });
+  }
+
+  /** Abre un documento: pasa a ser el único nodo marcado del árbol. */
+  function openDoc(id: string) {
+    select(null);
+    navigate(`/documents/${id}`);
+  }
+
+  /**
+   * Selecciona una carpeta. Si había un documento abierto, se sale de su ruta
+   * para que deje de estar marcado: solo un nodo seleccionado a la vez.
+   */
+  function selectCategory(id: string | null) {
+    select(id);
+    if (openDocId) {
+      navigate('/');
+    }
+  }
+
+  /** Crea un documento en la carpeta seleccionada (o en la raíz) y lo abre. */
+  async function newDocument() {
+    setBusy(true);
+    try {
+      const doc = await createDoc('Documento sin título', selectedId);
+      if (selectedId) {
+        // La carpeta ya tiene contenido: hay que traer su listado si no estaba
+        // cargado y refrescar el árbol para que aparezca su chevron.
+        await loadFor(selectedId);
+        setExpanded((prev) => new Set(prev).add(selectedId));
+      }
+      await reloadTree();
+      // Queda marcado solo el documento nuevo, no la carpeta donde se creó.
+      openDoc(doc.id);
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function submitNew() {
@@ -291,12 +419,17 @@ export function Sidebar() {
     }
   }
 
+  /** Descarta la creación de carpeta en curso. */
+  function cancelNew() {
+    setAdding(false);
+    setNewName('');
+  }
+
   function onKeyDown(e: KeyboardEvent<HTMLInputElement>) {
     if (e.key === 'Enter') {
       void submitNew();
     } else if (e.key === 'Escape') {
-      setAdding(false);
-      setNewName('');
+      cancelNew();
     }
   }
 
@@ -358,14 +491,35 @@ export function Sidebar() {
     <aside className="sidebar">
       <div className="sidebar-top">
         <span className="sidebar-title">Carpetas</span>
-        <button
-          className="icon-btn"
-          type="button"
-          title={selectedNode ? `Nueva subcarpeta en «${selectedNode.name}»` : 'Nueva carpeta'}
-          onClick={() => setAdding((v) => !v)}
-        >
-          +
-        </button>
+        <span className="sidebar-top-actions">
+          <button
+            className="icon-btn"
+            type="button"
+            disabled={busy}
+            title={
+              selectedNode
+                ? `Nuevo documento en «${selectedNode.name}»`
+                : 'Nuevo documento en la raíz'
+            }
+            onClick={() => void newDocument()}
+          >
+            <DocIcon />
+          </button>
+          <button
+            className="icon-btn"
+            type="button"
+            title={
+              adding
+                ? 'Cancelar'
+                : selectedNode
+                  ? `Nueva subcarpeta en «${selectedNode.name}»`
+                  : 'Nueva carpeta'
+            }
+            onClick={() => (adding ? cancelNew() : setAdding(true))}
+          >
+            +
+          </button>
+        </span>
       </div>
 
       {adding && (
@@ -382,6 +536,24 @@ export function Sidebar() {
             onKeyDown={onKeyDown}
             disabled={busy}
           />
+          <div className="add-folder-actions">
+            <button
+              className="btn btn--ghost btn--sm"
+              type="button"
+              onClick={cancelNew}
+              disabled={busy}
+            >
+              Cancelar
+            </button>
+            <button
+              className="btn btn--sm"
+              type="button"
+              onClick={() => void submitNew()}
+              disabled={busy || newName.trim() === ''}
+            >
+              Crear
+            </button>
+          </div>
         </div>
       )}
 
@@ -389,14 +561,14 @@ export function Sidebar() {
         className="tree"
         onClick={(e) => {
           if (e.target === e.currentTarget) {
-            select(null);
+            selectCategory(null);
           }
         }}
       >
         {loading ? (
           <p className="tree-empty">Cargando…</p>
-        ) : tree.length === 0 ? (
-          <p className="tree-empty">Aún no hay carpetas. Crea la primera con «+».</p>
+        ) : tree.length === 0 && rootDocumentCount === 0 ? (
+          <p className="tree-empty">Aún no hay nada. Crea una carpeta con «+» o un documento.</p>
         ) : (
           <ul className="tree-root">
             {tree.map((node) => (
@@ -407,7 +579,11 @@ export function Sidebar() {
                 selectedId={selectedId}
                 expanded={expanded}
                 editingId={editingId}
-                onSelect={select}
+                docsByCategory={byCategory}
+                loadingDocKeys={loadingKeys}
+                openDocId={openDocId ?? null}
+                onOpenDoc={openDoc}
+                onSelect={selectCategory}
                 onToggle={toggle}
                 onStartRename={setEditingId}
                 onSubmitRename={submitRename}
@@ -420,6 +596,16 @@ export function Sidebar() {
                 onDragOver={handleDragOver}
                 onDrop={handleDrop}
                 onDragEnd={clearDrag}
+              />
+            ))}
+            {/* Documentos que viven en la raíz (fuera de cualquier carpeta) */}
+            {rootDocs.map((doc) => (
+              <DocItem
+                key={doc.id}
+                doc={doc}
+                depth={0}
+                active={openDocId === doc.id}
+                onOpen={openDoc}
               />
             ))}
           </ul>

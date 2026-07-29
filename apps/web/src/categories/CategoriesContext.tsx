@@ -33,6 +33,8 @@ function findNode(nodes: CategoryNode[], id: string): CategoryNode | null {
 
 interface CategoriesContextValue {
   tree: CategoryNode[];
+  /** Documentos que viven en la raíz (contador que llega con el árbol). */
+  rootDocumentCount: number;
   loading: boolean;
   selectedId: string | null;
   selectedNode: CategoryNode | null;
@@ -49,12 +51,14 @@ const CategoriesContext = createContext<CategoriesContextValue | undefined>(unde
 
 export function CategoriesProvider({ children }: { children: ReactNode }) {
   const [tree, setTree] = useState<CategoryNode[]>([]);
+  const [rootDocumentCount, setRootDocumentCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
     const data = await getCategories();
-    setTree(data);
+    setTree(data.tree);
+    setRootDocumentCount(data.rootDocumentCount);
   }, []);
 
   useEffect(() => {
@@ -114,6 +118,7 @@ export function CategoriesProvider({ children }: { children: ReactNode }) {
   const value = useMemo<CategoriesContextValue>(
     () => ({
       tree,
+      rootDocumentCount,
       loading,
       selectedId,
       selectedNode,
@@ -125,7 +130,20 @@ export function CategoriesProvider({ children }: { children: ReactNode }) {
       move,
       reorder,
     }),
-    [tree, loading, selectedId, selectedNode, select, reload, create, rename, remove, move, reorder],
+    [
+      tree,
+      rootDocumentCount,
+      loading,
+      selectedId,
+      selectedNode,
+      select,
+      reload,
+      create,
+      rename,
+      remove,
+      move,
+      reorder,
+    ],
   );
 
   return <CategoriesContext.Provider value={value}>{children}</CategoriesContext.Provider>;

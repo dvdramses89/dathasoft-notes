@@ -97,11 +97,18 @@ export interface CategoryNode {
   color: string | null;
   position: number;
   parentId: string | null;
+  /** Documentos directos de la carpeta; permite saber si tiene contenido sin cargarlo. */
+  documentCount: number;
   children: CategoryNode[];
 }
 
-export function getCategories(): Promise<CategoryNode[]> {
-  return request<CategoryNode[]>('/categories');
+export interface CategoryTreeResult {
+  tree: CategoryNode[];
+  rootDocumentCount: number;
+}
+
+export function getCategories(): Promise<CategoryTreeResult> {
+  return request<CategoryTreeResult>('/categories');
 }
 
 export function createCategory(input: {
@@ -155,6 +162,87 @@ export function reorderCategories(
   return request<{ reordered: number }>('/categories/reorder', {
     method: 'PATCH',
     body: JSON.stringify({ parentId, orderedIds }),
+  });
+}
+
+// ---------------- Documentos ----------------
+
+/** Documento en un listado (sin el contenido del editor). */
+export interface DocumentListItem {
+  id: string;
+  title: string;
+  categoryId: string | null;
+  position: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Documento completo, con el contenido del editor. */
+export interface DocumentFull extends DocumentListItem {
+  contentJson: unknown;
+  contentText: string;
+}
+
+/** Sin filtro = todos; null = solo los de la raiz; uuid = los de esa carpeta. */
+export function getDocuments(categoryId?: string | null): Promise<DocumentListItem[]> {
+  const query = categoryId === undefined ? '' : `?categoryId=${categoryId ?? 'root'}`;
+  return request<DocumentListItem[]>(`/documents${query}`);
+}
+
+export function getDocument(id: string): Promise<DocumentFull> {
+  return request<DocumentFull>(`/documents/${id}`);
+}
+
+export function createDocument(input: {
+  title: string;
+  categoryId?: string | null;
+  contentJson?: unknown;
+  contentText?: string;
+}): Promise<DocumentFull> {
+  const body: Record<string, unknown> = { title: input.title };
+  if (input.categoryId) {
+    body.categoryId = input.categoryId;
+  }
+  if (input.contentJson !== undefined) {
+    body.contentJson = input.contentJson;
+  }
+  if (input.contentText !== undefined) {
+    body.contentText = input.contentText;
+  }
+  return request<DocumentFull>('/documents', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+}
+
+export function updateDocument(
+  id: string,
+  input: { title?: string; contentJson?: unknown; contentText?: string },
+): Promise<DocumentFull> {
+  return request<DocumentFull>(`/documents/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  });
+}
+
+export function moveDocument(id: string, categoryId: string | null): Promise<DocumentFull> {
+  return request<DocumentFull>(`/documents/${id}/move`, {
+    method: 'PATCH',
+    body: JSON.stringify({ categoryId }),
+  });
+}
+
+export function deleteDocument(id: string): Promise<{ deleted: number }> {
+  return request<{ deleted: number }>(`/documents/${id}`, { method: 'DELETE' });
+}
+
+export function reorderDocuments(
+  categoryId: string | null,
+  orderedIds: string[],
+): Promise<{ reordered: number }> {
+  return request<{ reordered: number }>('/documents/reorder', {
+    method: 'PATCH',
+    body: JSON.stringify({ categoryId, orderedIds }),
   });
 }
 
