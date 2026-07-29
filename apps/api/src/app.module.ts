@@ -4,6 +4,7 @@ import { HealthController } from './health/health.controller';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { CategoriesModule } from './categories/categories.module';
+import { DocumentsModule } from './documents/documents.module';
 
 @Module({
   imports: [
@@ -15,6 +16,8 @@ import { CategoriesModule } from './categories/categories.module';
     AuthModule,
     // Categorias (arbol de carpetas)
     CategoriesModule,
+    // Documentos (notas dentro de las carpetas)
+    DocumentsModule,
   ],
   controllers: [HealthController],
 })
