@@ -2,10 +2,19 @@ import '@blocknote/core/fonts/inter.css';
 import '@blocknote/ariakit/style.css';
 
 import { BlockNoteView } from '@blocknote/ariakit';
-import type { Block, PartialBlock } from '@blocknote/core';
+import { BlockNoteSchema, defaultBlockSpecs, type Block, type PartialBlock } from '@blocknote/core';
 import { es } from '@blocknote/core/locales';
 import { useCreateBlockNote } from '@blocknote/react';
 import { useCallback, useEffect, useRef } from 'react';
+import { codeBlockSpec } from './codeBlock';
+
+/**
+ * Esquema por defecto, sustituyendo el bloque de codigo por el nuestro:
+ * mismo bloque pero con resaltado de sintaxis multi-lenguaje (shiki).
+ */
+const schema = BlockNoteSchema.create({
+  blockSpecs: { ...defaultBlockSpecs, codeBlock: codeBlockSpec },
+});
 
 /** Milisegundos de inactividad antes de guardar automaticamente. */
 const AUTOSAVE_DELAY = 900;
@@ -58,6 +67,7 @@ interface DocumentEditorProps {
 
 export function DocumentEditor({ initialContent, onSave }: DocumentEditorProps) {
   const editor = useCreateBlockNote({
+    schema,
     // Menus y etiquetas del editor en espanol.
     dictionary: es,
     // Un documento vacio necesita al menos un bloque para que el editor arranque.

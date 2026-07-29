@@ -791,6 +791,43 @@ code {
   color: var(--muted);
 }
 
+/* ---- Bloques de codigo (resaltado con shiki) ---- */
+
+.doc-editor [data-content-type='codeBlock'] {
+  background: rgba(2, 6, 23, 0.55);
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 10px;
+  padding: 0.5rem 0.75rem;
+}
+
+/* El fondo va en el bloque, no en cada linea */
+.doc-editor [data-content-type='codeBlock'] pre,
+.doc-editor [data-content-type='codeBlock'] code {
+  background: transparent;
+  font-size: 0.85rem;
+  line-height: 1.55;
+}
+
+/* Selector de lenguaje: visible y con el estilo de la app */
+.doc-editor [data-content-type='codeBlock'] select {
+  background-color: var(--card);
+  color: var(--muted);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 6px;
+  padding: 0.1rem 0.3rem;
+  font-family: inherit;
+  font-size: 0.72rem;
+  cursor: pointer;
+  opacity: 0.65;
+  transition: opacity 0.12s ease, color 0.12s ease;
+}
+
+.doc-editor [data-content-type='codeBlock']:hover select,
+.doc-editor [data-content-type='codeBlock'] select:focus {
+  opacity: 1;
+  color: var(--text);
+}
+
 /* Menus del editor (menu "/", barra de formato, desplegables). Ariakit fija
    estos colores en su hoja de estilos con valores propios, asi que se
    sobreescriben aqui para alinearlos con la paleta de la app. */
