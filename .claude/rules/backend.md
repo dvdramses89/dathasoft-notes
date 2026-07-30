@@ -22,6 +22,7 @@ src/<dominio>/
 
 - Las carpetas transversales (`decorators/`, `guards/`, `strategies/`) viven **dentro de `auth/`**, no en un `common/` global.
 - NORMA: **no crear `common/`, `config/`, `filters/`, `interceptors/`, `pipes/` ni barrel files (`index.ts`)** sin que el usuario lo pida. Hoy no existe ninguno y el proyecto funciona así a propósito.
+- NORMA: por eso la validación del entorno es un **fichero suelto en `src/`**, `env.validation.ts`, al lado de `main.ts` y `app.module.ts`, y **no** una carpeta `config/`. Es el único sitio donde se usa `class-validator` fuera de un DTO: valida `process.env` con la misma herramienta que ya valida los bodies, sin añadir Joi.
 - Carpetas de dominio en **plural** (`categories`, `documents`, `users`); las transversales en singular (`auth`, `prisma`, `health`).
 
 Dos excepciones reales, ambas deliberadas:

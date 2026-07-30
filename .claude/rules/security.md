@@ -74,15 +74,16 @@ Validaciones que protegen la estructura, no solo el acceso. Son parte de la segu
 - **Nunca se commitea un `.env` real.** `.gitignore` ignora `.env` y `.env.*` con la excepción `!.env.example`. Cada app documenta sus claves en su `.env.example`.
 - Generar un secreto nuevo: `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"`.
 - Nada de valores sensibles hardcodeados en el código, ni siquiera como default de desarrollo.
+- NORMA: **el entorno se valida al arrancar** en [env.validation.ts](../../apps/api/src/env.validation.ts), vía `ConfigModule.forRoot({ validate })`. `DATABASE_URL` y `JWT_SECRET` (mínimo 32 caracteres) son obligatorias: si faltan o no cumplen, **la API no arranca**. Al añadir una variable de entorno nueva, declárala ahí y en el `.env.example`.
+- NORMA: **el secreto se lee con `getOrThrow<string>('JWT_SECRET')`, nunca con `get()` más un fallback.** Así está en los dos únicos sitios que lo usan: `auth.module.ts` (firmar) y `jwt.strategy.ts` (verificar). Un secreto vacío significa aceptar tokens que cualquiera puede firmar.
+- NORMA: **el mensaje de error de validación no imprime el valor de la variable**, solo su nombre y el motivo. Ese texto acaba en el log de arranque y `JWT_SECRET` no puede aparecer ahí.
 
 ## Deuda de seguridad conocida
 
 Asumida a sabiendas mientras el proyecto corre **solo en local**. Se aborda en la **Fase 4.5** de [PLAN.md](../../PLAN.md), no antes y no de paso.
 
-- DEUDA: `secretOrKey: config.get<string>('JWT_SECRET') ?? ''` ([jwt.strategy.ts:17](../../apps/api/src/auth/strategies/jwt.strategy.ts#L17)) — **fallback a cadena vacía**. Si la variable falta, la API arranca igualmente y acepta tokens firmados con `''`. Es la deuda más grave de la lista.
 - DEUDA: `app.enableCors()` **sin opciones** ([main.ts:22](../../apps/api/src/main.ts#L22)) — CORS totalmente abierto, sin allowlist ni distinción por `NODE_ENV`.
 - DEUDA: **sin `helmet`** — no se envían cabeceras de seguridad.
 - DEUDA: **sin rate limiting** (`@nestjs/throttler` no está instalado). `/api/auth/login` no tiene ninguna protección de fuerza bruta.
 - DEUDA: el token se guarda en **`localStorage`** (clave `dtnotes_token`), expuesto a XSS. Cambiarlo a cookie httpOnly implicaría rehacer el cliente API y añadir CSRF, así que se mantiene.
-- DEUDA: `ConfigModule.forRoot({ isGlobal: true })` **sin `validationSchema`** — ninguna variable de entorno es obligatoria al arrancar.
 - DEUDA: **sin refresh token y sin logout con invalidación**. Un token robado es válido hasta que caduca (`JWT_EXPIRES_IN`, por defecto 1 día). Fuera del alcance de la Fase 4.5 por decisión ya tomada en [TEMPLATE.md](../../TEMPLATE.md).

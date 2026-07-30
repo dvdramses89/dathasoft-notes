@@ -69,7 +69,7 @@ dathasoft-notes/
 │   ├── api/
 │   │   ├── prisma/{schema.prisma, migrations/}
 │   │   └── src/
-│   │       ├── main.ts · app.module.ts
+│   │       ├── main.ts · app.module.ts · env.validation.ts
 │   │       ├── health/         ← controller SIN módulo (va en AppModule)
 │   │       ├── prisma/         ← PrismaModule @Global
 │   │       ├── users/          ← módulo SIN controller
@@ -155,7 +155,8 @@ Toda la configuración entorno-dependiente vive en ficheros `.env`. **Nunca se h
 | `apps/web/.env` | `VITE_API_URL` |
 
 - Generar un `JWT_SECRET`: `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"`.
-- DEUDA: `ConfigModule.forRoot({ isGlobal: true })` va **sin `envFilePath` y sin `validationSchema`** — no se cargan `.env.development`/`.env.production` y ninguna variable es obligatoria al arrancar. Los consumidores usan defaults inline (`?? 3000`, `?? '1d'`).
+- Las variables de la API **se validan al arrancar** con `class-validator` en `apps/api/src/env.validation.ts` (`ConfigModule.forRoot({ validate })`). `DATABASE_URL` y `JWT_SECRET` son obligatorias; `PORT`, `NODE_ENV` y `JWT_EXPIRES_IN` son opcionales y mantienen su default inline en el consumidor (`?? 3000`, `?? '1d'`).
+- DEUDA: `ConfigModule.forRoot()` va **sin `envFilePath`** — no se cargan `.env.development` ni `.env.production`, solo `.env`.
 
 ## Estado y documentos relacionados
 

@@ -14,7 +14,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: config.get<string>('JWT_SECRET') ?? '',
+      // getOrThrow, no get: sin secreto no hay estrategia posible.
+      // La validacion de env.validation.ts ya lo garantiza; esto es el cinturon.
+      secretOrKey: config.getOrThrow<string>('JWT_SECRET'),
     });
   }
 
