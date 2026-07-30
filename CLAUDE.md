@@ -151,11 +151,11 @@ Toda la configuración entorno-dependiente vive en ficheros `.env`. **Nunca se h
 | Fichero | Claves |
 |---|---|
 | `.env` (raíz) | `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `POSTGRES_PORT` — solo para docker-compose |
-| `apps/api/.env` | `PORT`, `NODE_ENV`, `DATABASE_URL`, `JWT_SECRET`, `JWT_EXPIRES_IN` |
+| `apps/api/.env` | `PORT`, `NODE_ENV`, `DATABASE_URL`, `JWT_SECRET`, `JWT_EXPIRES_IN`, `CORS_ORIGINS` |
 | `apps/web/.env` | `VITE_API_URL` |
 
 - Generar un `JWT_SECRET`: `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"`.
-- Las variables de la API **se validan al arrancar** con `class-validator` en `apps/api/src/env.validation.ts` (`ConfigModule.forRoot({ validate })`). `DATABASE_URL` y `JWT_SECRET` son obligatorias; `PORT`, `NODE_ENV` y `JWT_EXPIRES_IN` son opcionales y mantienen su default inline en el consumidor (`?? 3000`, `?? '1d'`).
+- Las variables de la API **se validan al arrancar** con `class-validator` en `apps/api/src/env.validation.ts` (`ConfigModule.forRoot({ validate })`). `DATABASE_URL` y `JWT_SECRET` son obligatorias siempre, y `CORS_ORIGINS` lo es **solo si `NODE_ENV=production`**; `PORT`, `NODE_ENV` y `JWT_EXPIRES_IN` son opcionales y mantienen su default inline en el consumidor (`?? 3000`, `?? '1d'`).
 - DEUDA: `ConfigModule.forRoot()` va **sin `envFilePath`** — no se cargan `.env.development` ni `.env.production`, solo `.env`.
 
 ## Estado y documentos relacionados

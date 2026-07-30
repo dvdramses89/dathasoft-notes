@@ -8,6 +8,7 @@ import {
   Max,
   Min,
   MinLength,
+  ValidateIf,
   validateSync,
 } from 'class-validator';
 
@@ -49,6 +50,19 @@ export class EnvironmentVariables {
   @IsString({ message: 'debe ser una cadena de texto (ejemplos: 1d, 12h, 3600s)' })
   @IsNotEmpty({ message: 'no puede estar vacía' })
   JWT_EXPIRES_IN?: string;
+
+  // Origenes permitidos por CORS, separados por comas.
+  // En desarrollo es opcional (se usa el localhost del SPA de Vite);
+  // en produccion es obligatoria, para no dejar la API abierta al mundo.
+  // Sin @IsString: @IsNotEmpty ya cubre el caso de que falte, y asi el
+  // mensaje de error no repite dos motivos para lo mismo.
+  @ValidateIf((env: EnvironmentVariables) => env.NODE_ENV === 'production')
+  @IsNotEmpty({
+    message:
+      'es obligatoria cuando NODE_ENV=production (origenes separados por comas, ' +
+      'ejemplo: https://notes.midominio.com)',
+  })
+  CORS_ORIGINS?: string;
 }
 
 /**

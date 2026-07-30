@@ -78,11 +78,19 @@ Validaciones que protegen la estructura, no solo el acceso. Son parte de la segu
 - NORMA: **el secreto se lee con `getOrThrow<string>('JWT_SECRET')`, nunca con `get()` más un fallback.** Así está en los dos únicos sitios que lo usan: `auth.module.ts` (firmar) y `jwt.strategy.ts` (verificar). Un secreto vacío significa aceptar tokens que cualquiera puede firmar.
 - NORMA: **el mensaje de error de validación no imprime el valor de la variable**, solo su nombre y el motivo. Ese texto acaba en el log de arranque y `JWT_SECRET` no puede aparecer ahí.
 
+## CORS
+
+- **Allowlist explícita**, nunca `enableCors()` a secas ([main.ts](../../apps/api/src/main.ts)). Los orígenes salen de `CORS_ORIGINS` (lista separada por comas); si no está definida, se usan los dos `localhost:5173` del SPA de Vite que declara `ORIGENES_LOCALES`.
+- NORMA: **`CORS_ORIGINS` es obligatoria cuando `NODE_ENV=production`**, validada con `@ValidateIf` en `env.validation.ts`. Así el default de desarrollo no puede colarse en producción: sin la variable, la API no arranca.
+- Se acotan también `methods` (GET, POST, PATCH, DELETE, OPTIONS) y `allowedHeaders` (`Content-Type`, `Authorization`).
+- NORMA: **`credentials: false`**. El token viaja en la cabecera `Authorization`, no en cookies, así que no hace falta y activarlo solo ampliaría la superficie. Si algún día el token pasa a cookie httpOnly, esto cambia junto con CSRF.
+- Un origen fuera de la lista **recibe respuesta sin la cabecera `Access-Control-Allow-Origin`**, y es el navegador quien bloquea. Las peticiones **sin cabecera `Origin`** (curl, Postman, health checks) no llevan política CORS y siguen funcionando: CORS protege al navegador, no es control de acceso. La autorización la hace el JWT.
+- El arranque loguea los orígenes permitidos. Es deliberado: un origen mal escrito (una barra final de más) es invisible de otro modo.
+
 ## Deuda de seguridad conocida
 
 Asumida a sabiendas mientras el proyecto corre **solo en local**. Se aborda en la **Fase 4.5** de [PLAN.md](../../PLAN.md), no antes y no de paso.
 
-- DEUDA: `app.enableCors()` **sin opciones** ([main.ts:22](../../apps/api/src/main.ts#L22)) — CORS totalmente abierto, sin allowlist ni distinción por `NODE_ENV`.
 - DEUDA: **sin `helmet`** — no se envían cabeceras de seguridad.
 - DEUDA: **sin rate limiting** (`@nestjs/throttler` no está instalado). `/api/auth/login` no tiene ninguna protección de fuerza bruta.
 - DEUDA: el token se guarda en **`localStorage`** (clave `dtnotes_token`), expuesto a XSS. Cambiarlo a cookie httpOnly implicaría rehacer el cliente API y añadir CSRF, así que se mantiene.
