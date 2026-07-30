@@ -63,6 +63,29 @@ export class EnvironmentVariables {
       'ejemplo: https://notes.midominio.com)',
   })
   CORS_ORIGINS?: string;
+
+  // Rate limiting de /api/auth/login y /api/auth/register.
+  // Los TTL van en SEGUNDOS aqui; auth.module.ts los pasa a milisegundos,
+  // que es lo que espera @nestjs/throttler.
+  @IsOptional()
+  @IsInt({ message: 'debe ser un numero entero' })
+  @Min(1, { message: 'debe ser 1 o mayor' })
+  THROTTLE_LOGIN_LIMIT?: number;
+
+  @IsOptional()
+  @IsInt({ message: 'debe ser un numero entero de segundos' })
+  @Min(1, { message: 'debe ser 1 o mayor' })
+  THROTTLE_LOGIN_TTL?: number;
+
+  @IsOptional()
+  @IsInt({ message: 'debe ser un numero entero' })
+  @Min(1, { message: 'debe ser 1 o mayor' })
+  THROTTLE_REGISTER_LIMIT?: number;
+
+  @IsOptional()
+  @IsInt({ message: 'debe ser un numero entero de segundos' })
+  @Min(1, { message: 'debe ser 1 o mayor' })
+  THROTTLE_REGISTER_TTL?: number;
 }
 
 /**

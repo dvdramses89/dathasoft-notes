@@ -46,6 +46,7 @@ Desde **`apps/api`**: `npm run prisma:generate`, `prisma:migrate` (= `prisma mig
 | ORM | **Prisma 6** |
 | Base de datos | **PostgreSQL 16** (Docker en local) |
 | Autenticación | **JWT + Passport** dentro de la propia API |
+| Endurecimiento | **`helmet`** (cabeceras) + **`@nestjs/throttler`** (rate limiting solo en login y registro) |
 | Repo / IDE | GitHub (`https://github.com/dvdramses89/dathasoft-notes.git`) + VS Code |
 | Despliegue | **Zeabur** — decidido pero **aún sin configurar** (Fase 11) |
 
@@ -151,7 +152,7 @@ Toda la configuración entorno-dependiente vive en ficheros `.env`. **Nunca se h
 | Fichero | Claves |
 |---|---|
 | `.env` (raíz) | `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `POSTGRES_PORT` — solo para docker-compose |
-| `apps/api/.env` | `PORT`, `NODE_ENV`, `DATABASE_URL`, `JWT_SECRET`, `JWT_EXPIRES_IN`, `CORS_ORIGINS` |
+| `apps/api/.env` | `PORT`, `NODE_ENV`, `DATABASE_URL`, `JWT_SECRET`, `JWT_EXPIRES_IN`, `CORS_ORIGINS`, `THROTTLE_*` |
 | `apps/web/.env` | `VITE_API_URL` |
 
 - Generar un `JWT_SECRET`: `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"`.

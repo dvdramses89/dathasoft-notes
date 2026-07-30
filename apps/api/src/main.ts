@@ -1,6 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
 import { Logger, ValidationPipe } from '@nestjs/common';
+import helmet from 'helmet';
 import { AppModule } from './app.module';
 
 // Origenes del SPA en local. Solo se usan si CORS_ORIGINS no viene definida,
@@ -22,6 +23,13 @@ function resolverOrigenes(valor: string | undefined): string[] {
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
+
+  // Cabeceras de seguridad. Con los defaults basta: la API solo devuelve JSON.
+  // La mas importante aqui es X-Content-Type-Options: nosniff, porque las
+  // respuestas llevan texto escrito por el usuario (title, excerpt, contentText)
+  // y sin ella el navegador podria interpretarlo como HTML.
+  // Cuando la Fase 7 sirva adjuntos habra que revisar CSP y CORP.
+  app.use(helmet());
 
   // Todas las rutas cuelgan de /api
   app.setGlobalPrefix('api');

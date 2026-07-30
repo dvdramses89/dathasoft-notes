@@ -32,12 +32,13 @@ Depende de `users/`, que es un **módulo sin controller**: solo expone `UsersSer
 
 | Método | Ruta | Guard | Body | Devuelve |
 |---|---|---|---|---|
-| POST | `/api/auth/register` | — | `RegisterDto` | `PublicUser` · **201** |
-| POST | `/api/auth/login` | — | `LoginDto` | `{ accessToken, user }` · **200** |
+| POST | `/api/auth/register` | Throttler (`register`) | `RegisterDto` | `PublicUser` · **201** |
+| POST | `/api/auth/login` | Throttler (`login`) | `LoginDto` | `{ accessToken, user }` · **200** |
 | GET | `/api/auth/me` | JWT | — | `PublicUser` · 200 |
 
 - `register` lleva `@HttpCode(HttpStatus.CREATED)`, que es redundante (201 ya es el default de un POST) pero explícito.
 - `login` lleva `@HttpCode(HttpStatus.OK)` y **eso sí es necesario**: sin él, Nest devolvería 201 por ser POST, y un login no crea nada.
+- `register` y `login` son los **únicos endpoints de la API con rate limiting**, cada uno con su propio contador (`@SkipThrottle` descarta el del otro). `me()` no lo lleva. Los límites y el porqué del diseño están en `.claude/rules/security.md`.
 - Este es el **único controlador que declara el tipo de retorno** de sus métodos (`Promise<PublicUser>`, `Promise<LoginResult>`).
 
 ## Modelo / Entidades
@@ -62,3 +63,4 @@ El payload del token es mínimo a propósito: `{ sub: userId, email }`. No metas
 6. **Login con email inexistente** y **login con contraseña mala** — ambos devuelven 401 con **el mismo mensaje**. Si difieren, se ha roto la anti-enumeración.
 7. **`/me` sin token** → 401. **Con token válido** → el usuario. **Con token manipulado** → 401.
 8. **Usuario borrado de la BD con su token aún vigente** → `/me` devuelve 401 (lo comprueba `validate()`).
+9. **Rate limiting** — pasado el límite de login, la siguiente petición devuelve **429** con el mensaje en español; al expirar el TTL vuelve a aceptar. Agotar el contador de login **no** bloquea `register` (ni al revés), y ningún otro endpoint devuelve 429. Para probarlo sin esperar, arranca con `THROTTLE_LOGIN_TTL=5 THROTTLE_LOGIN_LIMIT=3`.

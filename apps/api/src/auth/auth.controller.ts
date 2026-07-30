@@ -1,4 +1,5 @@
 import { Body, Controller, Get, HttpCode, HttpStatus, Post, UseGuards } from '@nestjs/common';
+import { SkipThrottle, ThrottlerGuard } from '@nestjs/throttler';
 import { AuthService, type LoginResult, type PublicUser } from './auth.service';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { LoginDto } from './dto/login.dto';
@@ -9,14 +10,18 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard';
 export class AuthController {
   constructor(private readonly auth: AuthService) {}
 
-  // POST /api/auth/register
+  // POST /api/auth/register — limitado por el contador 'register'
+  @UseGuards(ThrottlerGuard)
+  @SkipThrottle({ login: true })
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
   register(@Body() dto: RegisterDto): Promise<PublicUser> {
     return this.auth.register(dto);
   }
 
-  // POST /api/auth/login
+  // POST /api/auth/login — limitado por el contador 'login' (fuerza bruta)
+  @UseGuards(ThrottlerGuard)
+  @SkipThrottle({ register: true })
   @Post('login')
   @HttpCode(HttpStatus.OK)
   login(@Body() dto: LoginDto): Promise<LoginResult> {

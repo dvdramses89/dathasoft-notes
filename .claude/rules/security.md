@@ -21,7 +21,7 @@ Innegociables. Aplican a **todo código nuevo**, esté o no reflejado en el cód
 - Payload mínimo: `{ sub: userId, email }` (tipo `JwtPayload`, exportado desde `auth.service.ts`).
 - Extracción: `ExtractJwt.fromAuthHeaderAsBearerToken()`, con `ignoreExpiration: false`.
 - NORMA: **`validate()` recarga el usuario desde la BD en cada petición** ([jwt.strategy.ts:23-27](../../apps/api/src/auth/strategies/jwt.strategy.ts#L23-L27)) y lanza `UnauthorizedException` si ya no existe. Cuesta una query por request autenticada, y a cambio un usuario borrado queda invalidado al instante sin esperar a que caduque su token. Es deliberado: no sustituirlo por confiar solo en el payload.
-- NORMA: **solo existe `JwtAuthGuard`** (`extends AuthGuard('jwt')`), aplicado con `@UseGuards(JwtAuthGuard)` **a nivel de clase** en los controladores protegidos. **No hay `RolesGuard`, ni decorador `@Roles`, ni `@Public()`, ni `APP_GUARD` global — no los inventes.** El enum `MemberRole {MEMBER, ADMIN}` existe en la BD pero no tiene lógica asociada todavía.
+- NORMA: **el único guard propio es `JwtAuthGuard`** (`extends AuthGuard('jwt')`), aplicado con `@UseGuards(JwtAuthGuard)` **a nivel de clase** en los controladores protegidos. El otro guard en uso es el `ThrottlerGuard` de la librería, solo en `login` y `register` (ver Rate limiting). **No hay `RolesGuard`, ni decorador `@Roles`, ni `@Public()`, ni `APP_GUARD` global — no los inventes.** El enum `MemberRole {MEMBER, ADMIN}` existe en la BD pero no tiene lógica asociada todavía.
 
 ## Autorización: ownership en la capa de servicio
 
@@ -87,11 +87,24 @@ Validaciones que protegen la estructura, no solo el acceso. Son parte de la segu
 - Un origen fuera de la lista **recibe respuesta sin la cabecera `Access-Control-Allow-Origin`**, y es el navegador quien bloquea. Las peticiones **sin cabecera `Origin`** (curl, Postman, health checks) no llevan política CORS y siguen funcionando: CORS protege al navegador, no es control de acceso. La autorización la hace el JWT.
 - El arranque loguea los orígenes permitidos. Es deliberado: un origen mal escrito (una barra final de más) es invisible de otro modo.
 
+## Cabeceras de seguridad
+
+- NORMA: **`app.use(helmet())` con los defaults**, antes del prefijo global ([main.ts](../../apps/api/src/main.ts)). La API solo devuelve JSON, así que no hace falta afinar nada. Envía `nosniff`, `X-Frame-Options`, HSTS, `Referrer-Policy`, CSP y las `Cross-Origin-*`, y quita `X-Powered-By`.
+- La importante aquí es **`X-Content-Type-Options: nosniff`**: las respuestas llevan texto escrito por el usuario (`title`, `excerpt`, `contentText`) y sin ella el navegador podría interpretar una respuesta como HTML.
+- NORMA: **cuando la Fase 7 sirva adjuntos hay que revisar CSP y `Cross-Origin-Resource-Policy`**. Los defaults de helmet son restrictivos con recursos embebidos; un adjunto servido desde la API puede quedar bloqueado. No lo relajes globalmente: acota por ruta.
+- `helmet` no interfiere con CORS: son cabeceras distintas y conviven. Verificado con petición autenticada + `Origin` del SPA.
+
+## Rate limiting
+
+- **`@nestjs/throttler` con almacén en memoria**, sin Redis. Configurado en `auth.module.ts` con **dos contadores independientes**: `login` y `register`.
+- NORMA: **el guard NO es global.** Se aplica con `@UseGuards(ThrottlerGuard)` **solo** en `login` y `register`, y cada uno descarta el contador ajeno con `@SkipThrottle({ … })`. El resto de la API no está limitada: no hay `APP_GUARD`, coherente con el resto del proyecto.
+- Límites por `.env`, con default si faltan: **login 5 intentos / 60 s**, **registro 3 altas / 3600 s**. Los TTL se declaran en **segundos** en el `.env` y `auth.module.ts` los multiplica por 1000, que es lo que espera throttler.
+- El 429 devuelve un mensaje en español (`errorMessage`) que no revela nada del estado de la cuenta.
+- DEUDA: **detrás de un proxy la IP que cuenta es la del proxy**, así que todos los usuarios compartirían contador. Al desplegar en Zeabur (Fase 11) hay que habilitar `trust proxy` en Express o el rate limiting será inútil (o bloqueará a todos a la vez).
+
 ## Deuda de seguridad conocida
 
-Asumida a sabiendas mientras el proyecto corre **solo en local**. Se aborda en la **Fase 4.5** de [PLAN.md](../../PLAN.md), no antes y no de paso.
+Las dos que quedan están **fuera del alcance de la Fase 4.5** por decisión ya tomada en [TEMPLATE.md](../../TEMPLATE.md). Asumidas a sabiendas: no las "arregles" de paso.
 
-- DEUDA: **sin `helmet`** — no se envían cabeceras de seguridad.
-- DEUDA: **sin rate limiting** (`@nestjs/throttler` no está instalado). `/api/auth/login` no tiene ninguna protección de fuerza bruta.
 - DEUDA: el token se guarda en **`localStorage`** (clave `dtnotes_token`), expuesto a XSS. Cambiarlo a cookie httpOnly implicaría rehacer el cliente API y añadir CSRF, así que se mantiene.
 - DEUDA: **sin refresh token y sin logout con invalidación**. Un token robado es válido hasta que caduca (`JWT_EXPIRES_IN`, por defecto 1 día). Fuera del alcance de la Fase 4.5 por decisión ya tomada en [TEMPLATE.md](../../TEMPLATE.md).
