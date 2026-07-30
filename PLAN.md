@@ -69,6 +69,15 @@ Repositorio remoto (ya creado): `https://github.com/dvdramses89/dathasoft-notes.
 
 > Pendientes anotados para el pulido (Fase 10): cargar el editor con `import()` diferido (el bundle pasa de ~1 MB por BlockNote) y revisar las 2 vulnerabilidades altas de `react-router` 7.18 que reporta `npm audit` (afectan al modo RSC, que esta SPA no usa; la corrección obliga a bajar de versión).
 
+## Fase 4.5 — Endurecimiento de seguridad
+- [ ] 4.5.1 Validar las variables de entorno al arrancar (`validationSchema` en `ConfigModule`) y eliminar el fallback `JWT_SECRET ?? ''` de `jwt.strategy.ts`: si falta el secreto, la API **no debe arrancar**.
+- [ ] 4.5.2 CORS con allowlist por `NODE_ENV` en lugar del `enableCors()` abierto de `main.ts`.
+- [ ] 4.5.3 `helmet` + rate limiting (`@nestjs/throttler`) en `/api/auth/login` y `/api/auth/register`.
+- [ ] 4.5.4 Repaso: todo endpoint no público lleva `JwtAuthGuard`, ningún DTO declara `ownerId`/`userId`, y ningún servicio lo acepta desde el cliente.
+- **Validación**: arrancar sin `JWT_SECRET` falla con un error claro; una petición desde un origen no permitido se rechaza; varios logins fallidos seguidos se bloquean temporalmente. *(Commit + push)*
+
+> Fase creada al documentar `.claude/rules/security.md`: recoge las reglas base de seguridad que ya están escritas como norma pero **aún no tienen respaldo en el código**. Quedan **fuera** de esta fase, por la decisión ya tomada en `TEMPLATE.md`: refresh token, logout con invalidación y roles. El token sigue en `localStorage` (pasarlo a cookie httpOnly obligaría a rehacer el cliente API y añadir CSRF).
+
 ## Fase 5 — Tags + buscador global
 - [ ] 5.1 Modelos `Tag` + `DocumentTag` + API para asignar/quitar tags.
 - [ ] 5.2 Web: asignar tags a documentos y filtrar por tags.

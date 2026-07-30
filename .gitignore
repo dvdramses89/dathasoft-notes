@@ -30,3 +30,6 @@ apps/api/prisma/*.db
 .DS_Store
 Thumbs.db
 *.local
+
+# Claude Code (las reglas de .claude/rules/ SI se versionan; los ajustes locales no)
+.claude/settings.local.json

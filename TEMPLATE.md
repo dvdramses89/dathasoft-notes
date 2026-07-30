@@ -19,13 +19,14 @@ Este proyecto sirve además como **plantilla base** para arrancar nuevas aplicac
 |---|---|
 | Estructura monorepo, scripts, `.gitignore`, `.env.example` | ✅ Genérico |
 | `docker-compose.yml` (Postgres) | ✅ Genérico (renombrar contenedor/BD) |
-| `apps/api/src/{main,app.module,config}` | ✅ Genérico |
+| `apps/api/src/{main.ts,app.module.ts}` | ✅ Genérico |
 | `apps/api/src/prisma/*` (Prisma module/service) | ✅ Genérico |
 | `apps/api/src/health/*` | ✅ Genérico |
 | `apps/api/src/auth/*` y `apps/api/src/users/*` | ✅ Genérico |
 | `apps/web/*` (auth, rutas, cliente API) | ✅ Genérico (cambiar branding "DTNotes") |
 | **`apps/api/prisma/schema.prisma`** | ⚠️ **Solo `User` es genérico.** El resto (Category, Document, Tag, DocumentTag, Favorite, Attachment, DocumentReference, Collective, CollectiveMember, DocumentShare, CategoryShare) y los enums (MemberRole, SharePermission) son **de DTNotes** → recortar. |
 | **`apps/api/prisma/migrations/*`** | ⚠️ Regenerar (la migración `init` crea las tablas de DTNotes + el `searchVector`). |
+| **`.claude/rules/*` y los `CLAUDE.md` de módulo** | 🔶 **Mixto.** Genéricos: `project-workflow`, `git-workflow`, `security`, `backend`, `testing`, la parte A de `frontend` (patrones React) y los `CLAUDE.md` de `auth/` y `prisma/`. Específicos de DTNotes: `database`, la parte B de `frontend` (catálogo de clases CSS) y los `CLAUDE.md` de `categories/`, `documents/` y `components/`. |
 | `CLAUDE.md`, `PLAN.md`, `README.md`, branding del `HomePage` | ⚠️ Específico de DTNotes → reescribir. |
 
 > Nota clave: **el código TypeScript de la API es hoy 100% genérico** (solo `auth`, `users`, `health`, `prisma`). No hay que borrar módulos de dominio porque todavía no existen; lo único que arrastra dominio es el esquema de la BD.
@@ -42,6 +43,7 @@ Este proyecto sirve además como **plantilla base** para arrancar nuevas aplicac
    ```
    (Si el nuevo proyecto no usa full-text search, no hace falta el paso manual del `searchVector`.)
 5. **Reescribir la documentación**: `CLAUDE.md`, `PLAN.md`, `README.md` y el branding "DTNotes" del frontend (`HomePage`, `index.html`, `README`).
+   - **La memoria de Claude se conserva**: mantén `.claude/rules/` con las reglas genéricas (ver la tabla de arriba), borra `database.md` y la parte B de `frontend.md`, y elimina los `CLAUDE.md` de los módulos de dominio que no te lleves. Ajusta los `@imports` del nuevo `CLAUDE.md` a los ficheros que queden.
 6. Copiar `.env.example` → `.env` en raíz y en `apps/api` / `apps/web`, generar un `JWT_SECRET` nuevo:
    ```
    node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
@@ -51,5 +53,5 @@ Este proyecto sirve además como **plantilla base** para arrancar nuevas aplicac
 ## Mejoras habituales pendientes (no incluidas en la base)
 
 - **Refresh token** (ahora solo access token con expiración).
-- Roles/permores globales, rate limiting, logging estructurado, tests e2e.
+- Roles/permisos globales, rate limiting, logging estructurado, tests e2e.
 - Endpoint de logout con invalidación (si se añade refresh token / lista negra).
