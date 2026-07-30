@@ -48,11 +48,13 @@ Son el contrato con la API, y se importan desde aquí en todo el frontend:
 |---|---|
 | `HealthResponse` | |
 | `PublicUser`, `LoginResult` | `createdAt` es **`string`**, no `Date`: viene serializado del JSON |
-| `CategoryNode`, `CategoryTreeResult` | `CategoryNode` es recursivo (`children`) |
+| `CategoryNode`, `CategoryTreeResult` | `CategoryNode` es recursivo (`children`); `icon` y `color` son `string \| null` |
 | `TreeMode` | `'subtree' \| 'single'` |
-| `DocumentListItem`, `DocumentFull` | Reflejan `listSelect` / `fullSelect` del backend |
+| `DocumentListItem`, `DocumentFull` | Reflejan `listSelect` / `fullSelect` del backend. **Ya no uno extiende al otro**: comparten un `DocumentBase` interno y luego divergen — el del listado lleva `excerpt`, el completo lleva `contentJson` + `contentText` |
 
 - NORMA: **`contentJson` se tipa como `unknown`**, a propósito, para que el cliente no se acople a los tipos de BlockNote. Quien lo consume (`DocumentPage`) hace el cast en su frontera.
+- **`toListItem(doc: DocumentFull): DocumentListItem`** es el único puente entre las dos formas, y se usa al meter en la cache un documento recién creado, movido o guardado. Recorta el `contentText` a 240 caracteres para rellenar el `excerpt`.
+  > El extracto **canónico lo calcula la API**; este recorte es una aproximación para que la vista previa no se quede vieja hasta el siguiente listado. Es la única lógica de la API que se repite aquí, y es deliberado: la alternativa era dejar la tarjeta desactualizada tras cada edición.
 - DEUDA: estos tipos están **duplicados a mano** respecto a los del backend, porque `packages/shared` está vacío. Al cambiar un contrato hay que tocar los dos lados y no hay nada que avise si se desincronizan.
 
 ## Validaciones requeridas

@@ -12,11 +12,11 @@ Organización **híbrida deliberada**: unas carpetas son técnicas y otras son p
 
 ```
 src/
-├── main.tsx · App.tsx · index.css · vite-env.d.ts
+├── main.tsx · App.tsx · index.css · theme.ts · vite-env.d.ts
 ├── auth/         ← feature: AuthContext
-├── categories/   ← feature: CategoriesContext
+├── categories/   ← feature: CategoriesContext, folderIcons
 ├── documents/    ← feature: DocumentEditor, DocumentsContext, codeBlock
-├── components/   ← técnica: AppLayout, ProtectedRoute, Sidebar, modales
+├── components/   ← técnica: AppLayout, AppHeader, ProtectedRoute, Sidebar, modales
 ├── lib/          ← técnica: api.ts
 └── pages/        ← técnica: Home, Document, Login, Register
 ```
@@ -28,15 +28,26 @@ src/
 ## Componentes
 
 - **100% componentes de función.** La única clase de todo el frontend es `ApiError extends Error`.
-- Nombres de fichero: `PascalCase.tsx` para componentes y contexts; `camelCase.ts` para módulos sin JSX (`api.ts`, `codeBlock.ts`).
+- Nombres de fichero: `PascalCase.tsx` para componentes y contexts; `camelCase.ts` para módulos sin JSX (`api.ts`, `codeBlock.ts`, `theme.ts`).
 - NORMA: **siempre export nombrado, nunca `export default`.**
-- Props: `interface XProps` cuando son muchas; tipado inline cuando son pocas (`function Chevron({ open }: { open: boolean })`). Ambos estilos conviven y son válidos.
+- Props: `interface XProps` cuando son muchas; tipado inline cuando son pocas. Ambos estilos conviven y son válidos.
 - Imports de tipos con `import type` o `type` inline: `import { useState, type FormEvent } from 'react'`.
 - NORMA: composición de clases CSS con array + filtro, nunca concatenando strings a mano:
   ```tsx
-  const classes = ['tree-item', isSelected ? 'tree-item--selected' : ''].filter(Boolean).join(' ');
+  const classes = ['tree-row', isSelected ? 'tree-row--selected' : ''].filter(Boolean).join(' ');
   ```
 - Comentarios en español, explicando **el porqué** de las decisiones no evidentes.
+
+## Librería de componentes: Mantine 8
+
+NORMA: **la UI se construye con Mantine** (`@mantine/core`). Antes de escribir un componente o una regla CSS, mira si Mantine ya lo trae.
+
+- `MantineProvider` envuelve toda la app en `main.tsx`, con el tema de `theme.ts`. El CSS de Mantine se importa **antes** de `index.css`, para que lo propio pueda ajustarlo.
+- En uso hoy: `AppShell`, `Modal`, `Menu`, `Button`, `ActionIcon`, `TextInput`, `PasswordInput`, `Card`, `Paper`, `Badge`, `Checkbox`, `Radio`, `SegmentedControl`, `SimpleGrid`, `Stack`, `Group`, `Text`, `Title`, `Breadcrumbs`, `Anchor`, `Avatar`, `Tooltip`, `ScrollArea`, `Loader`, `Alert`, `Center`, `Box`, `Divider`, `ColorSwatch`, `UnstyledButton`.
+- De `@mantine/hooks` se usan `useDisclosure` (el sidebar plegable) y `useLocalStorage` (el modo de vista recordado). Los demás están disponibles.
+- NORMA: **no se instalan más paquetes de Mantine** (`@mantine/form`, `@mantine/dates`, `@mantine/notifications`, `@mantine/spotlight`…) sin pedirlo. Solo están `core` y `hooks`.
+- NORMA: **no se envuelven los componentes de Mantine en componentes propios** (`<MyButton>`). Se usan directos, con sus props.
+- Estilos puntuales: props del sistema de Mantine (`mt`, `p`, `c`, `fw`, `size`) o `style` inline. Para lo que se repite, una clase en `index.css`.
 
 ## Estado: Context + useState
 
@@ -56,7 +67,7 @@ Los tres hooks (`useAuth`, `useCategories`, `useDocuments`) viven **junto a su P
 
 Dónde se monta cada uno:
 
-- `AuthContext` — en `main.tsx`, envuelve toda la app (las páginas de login la necesitan).
+- `MantineProvider` y `AuthContext` — en `main.tsx`, envuelven toda la app (las páginas de login las necesitan).
 - `CategoriesContext` y `DocumentsContext` — en `AppLayout`, es decir **dentro de la zona protegida**. No se cargan datos si no hay sesión.
 
 DEUDA: los tres hooks llevan `// eslint-disable-next-line react-refresh/only-export-components`, que hoy **no hace nada** porque no hay ESLint configurado. No los borres: volverían a hacer falta si algún día se añade.
@@ -74,7 +85,7 @@ Detalle interno —token, tipos, catálogo de funciones y las deudas de esta cap
 
 ## Formularios
 
-NORMA: **formularios nativos controlados.** No hay react-hook-form, Formik, zod ni yup, y no se instalan.
+NORMA: **formularios nativos controlados**, con los campos de Mantine. No hay react-hook-form, Formik, zod, yup ni `@mantine/form`, y no se instalan.
 
 Patrón (`LoginPage`, `RegisterPage`): un `useState` por campo, más `error: string | null` y `submitting: boolean`. La validación se delega al HTML (`required`, `type="email"`, `minLength={8}`) y al backend:
 
@@ -96,6 +107,10 @@ async function onSubmit(event: FormEvent) {
 
 El `finally` con `setSubmitting(false)` no es opcional: sin él, un error deja el botón bloqueado.
 
+- Los campos de Mantine exponen el valor en `e.currentTarget.value` (no `e.target.value`).
+- El estado de envío va en `loading` del `<Button>`, no en un texto cambiante.
+- Los errores se muestran con `<Alert color="red">`.
+
 ## Routing
 
 `react-router-dom` 7, en modo **declarativo** (`<Routes>`/`<Route>`). NORMA: no migrar a `createBrowserRouter` ni al data router.
@@ -107,11 +122,11 @@ El `finally` con `setSubmitting(false)` no es opcional: sin él, un error deja e
 
 Detalle de la composición en `apps/web/src/components/CLAUDE.md`.
 
-Pendiente anotado en el plan (Fase 10): **no hay lazy loading**; el bundle pasa de 1 MB por BlockNote.
+Pendiente anotado en el plan (Fase 10.3): **no hay lazy loading**; el bundle inicial va por ~1,2 MB entre BlockNote y Mantine.
 
 ## Drag & drop
 
-NORMA: **HTML5 Drag and Drop API nativa**, sin dnd-kit ni react-beautiful-dnd. Solo se reordena **entre hermanos del mismo padre**; cambiar de nivel se hace con el modal de mover.
+NORMA: **HTML5 Drag and Drop API nativa**, sin dnd-kit ni react-beautiful-dnd. Solo se reordena **entre hermanos del mismo padre**; cambiar de nivel se hace con el diálogo de mover.
 
 Hoy solo existe en el sidebar; la implementación y sus deudas, en `apps/web/src/components/CLAUDE.md`.
 
@@ -120,8 +135,9 @@ Hoy solo existe en el sidebar; la implementación y sus deudas, en `apps/web/src
 - `apps/web/tsconfig.json` tiene **`strict: true`** (a diferencia del de la API, que es strict parcial), más `noUnusedLocals`, `noUnusedParameters`, `noFallthroughCasesInSwitch`, `noEmit`, `isolatedModules`, `jsx: "react-jsx"`, `moduleResolution: "bundler"`, target ES2020.
 - **Sin `paths` ni alias**: todos los imports son relativos (`../lib/api`).
 - `vite.config.ts` es mínimo: solo el plugin de React y `port: 5173`. Sin proxy, sin alias, sin config de build.
+- `postcss.config.cjs` lleva la config que pide Mantine: `postcss-preset-mantine` (aporta `light-dark()`) y `postcss-simple-vars` con sus breakpoints.
 - El typecheck se ejecuta con `npm run build:web` (`tsc --noEmit && vite build`). Es la única verificación automática que hay.
-- `index.html` tiene 11 líneas, `lang="es"`, sin favicon ni metadatos.
+- `index.html` va en `lang="es"`, sin favicon, y lleva **un script inline** que aplica el tema guardado antes de que monte React (ver la sección de Tema).
 
 ---
 
@@ -129,86 +145,96 @@ Hoy solo existe en el sidebar; la implementación y sus deudas, en `apps/web/src
 
 ## Sistema de estilos
 
-NORMA: **todo el CSS de la aplicación vive en un único fichero**, `apps/web/src/index.css` (~936 líneas), importado una sola vez desde `main.tsx`.
+Dos capas, en este orden:
 
-- **No hay Tailwind, ni shadcn/ui, ni CSS Modules, ni styled-components, ni CSS-in-JS.** No se instalan.
-- NORMA: **no crear ficheros `.css` por componente.** El estilo nuevo se añade a `index.css`.
-- Convención de nombres **BEM-ish**: `bloque` y `bloque--modificador` (`tree-item--selected`, `btn--danger`, `modal--wide`).
-- El fichero está agrupado por zonas (base → formularios → botones → shell → sidebar → árbol → modales → documento → editor). Añade cada regla en su zona, no al final.
+1. **Mantine** pone los componentes y sus estilos. Es la primera opción siempre.
+2. **`apps/web/src/index.css`** (~320 líneas) cubre lo que Mantine no da: los tokens del shell, el árbol del sidebar, la hoja del documento y la integración del editor.
 
-## Tokens de color
+- NORMA: **todo el CSS propio vive en ese único fichero.** No crear ficheros `.css` por componente, ni CSS Modules, ni styled-components, ni CSS-in-JS. **Tampoco Tailwind.**
+- NORMA: antes de escribir CSS, comprueba que no lo resuelve un componente o una prop de Mantine.
+- Convención de nombres **BEM-ish**: `bloque` y `bloque--modificador` (`tree-row--selected`, `folder-card--selected`).
+- El fichero está agrupado por zonas (tokens → base → shell → árbol → vista de carpeta → documento → editor). Añade cada regla en su zona, no al final.
+- NORMA: usa las **variables CSS de Mantine** (`--mantine-color-text`, `--mantine-color-dimmed`, `--mantine-radius-md`, `--mantine-font-size-sm`, `--mantine-primary-color-filled`, `--mantine-spacing-*`) en lugar de valores a mano. Así el CSS propio sigue el tema activo sin duplicar nada.
 
-Variables CSS en `:root` (paleta Slate/Indigo escrita a mano):
+## Tokens del shell
+
+Cinco variables propias, y **cada tema declara sus valores** — los dos juegos están escritos a mano, uno debajo del otro, para que se lean de un tirón:
 
 ```css
---bg: #0f172a       --card: #1e293b     --text: #e2e8f0    --muted: #94a3b8
---ok: #22c55e       --error: #ef4444    --accent: #6366f1
+:root                                { --app-bg  --app-surface  --app-border  --app-hover  --app-active  --app-shadow }
+[data-mantine-color-scheme='dark']   { los mismos, con tonos `--mantine-color-dark-*` }
 ```
 
-NORMA: usa el token siempre que exista uno para lo que necesitas.
+| Token | Para qué |
+|---|---|
+| `--app-bg` | Fondo de la ventana (header y sidebar lo comparten) |
+| `--app-surface` | La superficie elevada: tarjetas y la hoja del documento |
+| `--app-border` | Borde de 1px de todo el shell |
+| `--app-hover` / `--app-active` | Estados de las filas del árbol |
+| `--app-shadow` | Sombra suave de la hoja (ninguna en oscuro) |
 
-DEUDA: hay bastantes colores hardcodeados fuera de los tokens — `#0b1220` (fondo del sidebar), los indigos claros `#818cf8` / `#a5b4fc` / `#e0e7ff`, `#cbd5e1`, `#243149`, `#16223c` y varios `rgba(148,163,184,·)` para bordes. No amplíes la lista, pero tampoco la refactorices por iniciativa propia.
+NORMA: si necesitas un color, usa uno de estos tokens o una variable de Mantine. **No añadas hex sueltos.**
 
-## Catálogo de clases
+## Catálogo de clases propias
 
-**Esto es lo que sustituye a la librería de componentes que no existe. Consúltalo antes de escribir CSS nuevo.**
+Lo que queda de CSS a mano. Todo lo demás son componentes de Mantine.
 
 | Clase | Modificadores | Para qué |
 |---|---|---|
-| `.btn` | `--ghost` · `--danger` · `--sm` | Botones. `--danger` es el rojo de las acciones destructivas |
-| `.card` | — | Contenedor con fondo `--card` y borde |
-| `.badge` | `--loading` · `--ok` · `--error` | Estados breves (el "Cargando…" de `ProtectedRoute`) |
-| `.form` · `.field` · `.field-hint` · `.form-error` | — | Formularios: contenedor, campo con label, ayuda y error |
-| `.modal-overlay` · `.modal` · `.modal-title` · `.modal-text` · `.modal-actions` · `.modal-cancel` | `.modal--wide` · `.modal-actions--stack` | Diálogos |
-| `.tree` · `.tree-item` · `.tree-children` · `.tree-name` · `.tree-chevron` · `.tree-actions` · `.tree-action` · `.tree-empty` · `.tree-hint` | `.tree-item--selected` · `--active` · `--dragging` · `--drop-before` · `--drop-after` | Árbol del sidebar |
-| `.dest-tree` · `.dest-item` | `.dest-item--selected` | Selector de carpeta destino en los modales de mover |
-| `.radio` · `.move-mode` | — | Elegir modo `subtree` / `single` |
-| `.app-shell` · `.sidebar` · `.content` · `.content-inner` | — | Layout general |
-| `.sidebar-top` · `.sidebar-title` · `.sidebar-footer` · `.sidebar-user` · `.avatar` | — | Cabecera y pie del sidebar |
-| `.add-folder` · `.add-folder-input` · `.add-folder-actions` · `.rename-input` | — | Crear y renombrar en línea |
-| `.doc-header` · `.doc-title-input` · `.doc-editor` · `.save-indicator` | `.save-indicator--saved` · `--error` | Vista de documento |
-| `.icon-btn` · `.chevron` · `.folder-icon` · `.doc-icon` | `.chevron--open` | Iconos y botones de icono |
+| `.app-header` · `.app-navbar` · `.app-main` | — | Las tres zonas del `AppShell` |
+| `.crumb-current` | — | El último tramo de las migas (el actual, no pulsable) |
+| `.tree-row` · `.tree-row-name` · `.tree-row-actions` · `.tree-chevron` · `.tree-list` · `.tree-scroll` | `.tree-row--selected` · `--active` · `--dragging` · `--drop-before` · `--drop-after` · `.tree-chevron--open` | Árbol del sidebar |
+| `.folder-card` | `.folder-card--selected` | Tarjeta de carpeta o documento en la vista de carpeta |
+| `.card-preview` | — | Extracto del documento, cortado con un degradado |
+| `.row-item` | — | Fila de la vista en lista |
+| `.doc-surface` · `.doc-title-input` · `.doc-editor` | — | La hoja del documento y su título |
 
-NORMA: **no existen componentes UI genéricos** (`<Button>`, `<Input>`, `<Modal>`). Se usan elementos nativos con estas clases. No introduzcas una capa de componentes sin pedirlo.
+- `.tree-row` la comparten el árbol del sidebar y el selector de destino de los diálogos de mover: misma fila, mismo aspecto.
+- NORMA: **el `.tree-row` es un `<div>`, no un `<button>`**, a propósito: lleva dentro el menú de acciones, y un botón dentro de otro es HTML inválido.
 
 ## Iconos
 
-NORMA: **SVG inline escritos a mano, sin librería.** No se instalan lucide-react, heroicons ni react-icons.
+NORMA: **`@tabler/icons-react`**, importados de uno en uno (`import { IconTrash } from '@tabler/icons-react'`) para que el tree-shaking los recorte. No se instalan lucide-react, heroicons ni react-icons, y **ya no se escriben SVG a mano**.
 
-Los seis existentes (`FolderIcon`, `DocIcon`, `Chevron`, `PencilIcon`, `TrashIcon`, `MoveIcon`) están definidos como componentes locales al principio de `Sidebar.tsx`. Dos "iconos" son caracteres literales: `+` para nueva carpeta y `⎋` para cerrar sesión.
+- NORMA: **un control que solo lleva icono necesita nombre accesible.** `aria-label` en `ActionIcon`/`Burger`; en las opciones de un `SegmentedControl`, que no aceptan `aria-label` directo, se envuelve el icono en `<span role="img" aria-label="…">`. Sin eso el control no se puede describir ni pulsar por su nombre, y el texto del `Tooltip` no cuenta como nombre accesible.
+- NORMA: si el nombre accesible **se repite** en dos zonas a propósito (el "Nuevo documento" del sidebar y el del estado vacío), que sea porque hacen lo mismo. Para distinguirlos hay que acotar por zona (`.app-navbar` / `.app-main`), no renombrarlos.
 
-Icono nuevo → SVG inline con el mismo estilo (`stroke="currentColor"`, tamaño en `em`).
+- Tamaño en píxeles por prop (`size={16}`) y grosor `stroke={1.7}`-`1.8` para el shell.
+- **Iconos de carpeta**: `categories/folderIcons.tsx` tiene el catálogo (20 iconos). La **clave** es lo que se guarda en `Category.icon`, no el SVG, así que el catálogo puede cambiar sin migrar datos. `<FolderIcon>` resuelve la clave y es tolerante a valores desconocidos: cae a `folder` en lugar de no pintar nada.
+- **Colores de carpeta**: `FOLDER_COLORS` en `theme.ts` (13 nombres de color de Mantine). Se guarda el **nombre**, no un hex, para que Mantine elija el tono de cada tema.
 
 ## Tema
 
-NORMA: **dark-only, sin toggle.** No hay `prefers-color-scheme`, ni clase `.dark`, ni estado de tema. El editor va forzado con `theme="dark"`. No añadas modo claro sin pedirlo.
+NORMA: **claro por defecto, oscuro con interruptor.** Hay un único origen de verdad, el `colorScheme` de Mantine.
 
-`color-scheme: light dark` está declarado en `:root`, pero no existe paleta clara.
+- El interruptor vive en `AppHeader`: `setColorScheme` de `useMantineColorScheme()`.
+- Para **leer** el tema activo se usa `useComputedColorScheme('light')`, no `colorScheme`: el guardado puede ser `'auto'` y hay que resolverlo.
+- Mantine persiste la elección en `localStorage` (`mantine-color-scheme-value`) y refleja el tema en `<html data-mantine-color-scheme>`.
+- NORMA: `index.html` lleva **un script inline** que aplica ese valor antes de que monte React. Sin él, al recargar en oscuro se ve un fogonazo blanco — el `<ColorSchemeScript>` de Mantine no sirve aquí porque en una SPA llega tarde. **No lo borres.**
+- El editor recibe el tema por prop: `<BlockNoteView theme={colorScheme}>`.
+- Excepción deliberada: los **bloques de código** llevan fondo oscuro en los dos temas, porque el tema de shiki (`github-dark-default`) es oscuro y no cambia al cambiar de tema.
 
 ## Tipografía y espaciado
 
-- Fuente de sistema: `system-ui, -apple-system, "Segoe UI", Roboto, sans-serif`.
-- El editor importa `@blocknote/core/fonts/inter.css`, pero se **neutraliza a propósito** con `.bn-root.dark { font-family: inherit; }` para que todo use la fuente de sistema.
-- DEUDA: los tamaños están en `rem` ad-hoc (0.72, 0.75, 0.78, 0.82, 0.85, 0.88, 0.9, 0.95, 1.1, 1.6, 2.25…), **sin escala tipográfica formal**.
+- Fuente de sistema (`system-ui, -apple-system, "Segoe UI", Roboto, sans-serif`), declarada en `theme.ts` para textos y encabezados.
+- El editor importa `@blocknote/core/fonts/inter.css`, pero se **neutraliza a propósito** con `.bn-container { font-family: inherit; }` para que todo use la fuente de sistema.
+- Tamaños y espacios: la escala de Mantine (`xs`…`xl`, `--mantine-font-size-*`, `--mantine-spacing-*`). NORMA: úsala en lugar de `rem` a ojo.
 
 ## Responsive
 
-Prácticamente inexistente y **no es prioridad**: hay **una sola media query**, que por debajo de 640px estrecha el sidebar de 264px a 210px y reduce el padding del contenido.
+Lo lleva el `AppShell`: por debajo del breakpoint `sm` (48em) el sidebar se **pliega** y se abre con el burger del header.
 
-El `.app-shell` es `position: fixed; inset: 0; display: flex`. No hay sidebar colapsable ni layout móvil. NORMA: no rehagas el layout en responsive sin que el usuario lo pida.
+- El grid de la vista de carpeta usa los cortes de `SimpleGrid` (`base`/`xs`/`sm`/`lg`/`xl`), no media queries a mano.
+- NORMA: **no escribas media queries nuevas.** Usa los breakpoints de Mantine (props responsive o `$mantine-breakpoint-*` vía PostCSS).
 
 ## Animaciones
 
-Solo `transition` cortas (0.05s–0.15s) sobre `background`, `color`, `opacity`, `box-shadow`, `border-color` y `transform`. La única rotación es `.chevron--open`.
+Solo `transition` cortas (0.1s–0.15s) sobre `background-color`, `color`, `opacity`, `box-shadow` y `border-color`, más la rotación de `.tree-chevron--open`. Las transiciones de modales y menús las pone Mantine.
 
-NORMA: **no hay `@keyframes` ni librerías de animación** (nada de Framer Motion). Mantenlo así.
+NORMA: **no hay `@keyframes` propios ni librerías de animación** (nada de Framer Motion). Mantenlo así.
 
 ## Integración visual de BlockNote
 
-El último tramo de `index.css` (~175 líneas) remapea las variables `--bn-colors-*` de BlockNote/Ariakit a la paleta de la app, y corrige a mano la barra de formato flotante de Ariakit (que venía con `overflow: scroll` y botones de 2.5rem).
+Con la variante **Mantine** del editor, sus menús son componentes de Mantine y **heredan el tema solos**. Por eso el bloque de integración bajó de ~175 líneas a ~30: solo se quita el fondo propio del editor (la hoja ya lo pone), se recupera la fuente de la app y se estilan los bloques de código.
 
-NORMA: al tocar el editor, ajusta **ese bloque**. No sobrescribas estilos de BlockNote con reglas sueltas repartidas por el fichero.
-
-## Deuda de diseño
-
-- DEUDA: el markup del modal está **duplicado a mano en varios sitios** (detalle en `apps/web/src/components/CLAUDE.md`). Lo natural sería extraer un `<Modal>`, pero **no lo hagas sin pedirlo**: choca con la norma de no crear componentes UI genéricos y es una decisión del usuario.
+NORMA: al tocar el editor, ajusta **ese bloque del final de `index.css`**. No sobrescribas estilos de BlockNote con reglas sueltas repartidas por el fichero.

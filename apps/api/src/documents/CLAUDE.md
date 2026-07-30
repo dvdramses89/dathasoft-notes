@@ -20,16 +20,31 @@ documents/
 
 ### `fullSelect` vs `listSelect`
 
-Hay **dos proyecciones** declaradas al principio del servicio, tipadas con `satisfies Prisma.DocumentSelect`, y sus tipos de respuesta se derivan de ellas:
+Hay **tres proyecciones** declaradas al principio del servicio, tipadas con `satisfies Prisma.DocumentSelect`, y sus tipos de respuesta se derivan de ellas:
 
 | Proyección | Incluye | Se usa en |
 |---|---|---|
 | `fullSelect` → `DocumentFull` | Todo, **con `contentJson` y `contentText`** | `create`, `findOne`, `update`, `move` |
-| `listSelect` → `DocumentListItem` | Sin el contenido | `list` |
+| `listSelect` | Sin el contenido | Es la **forma de la respuesta** de `list` |
+| `listQuerySelect` | `listSelect` + `contentText` | Es lo que se **pide a la BD** en `list` |
 
 NORMA: **los listados nunca devuelven `contentJson`.** Un documento largo pesa mucho y el sidebar solo necesita título y posición. Si añades un endpoint de listado, usa `listSelect`.
 
-Ninguna de las dos incluye `ownerId` ni `deletedAt`.
+Ninguna de las tres incluye `ownerId` ni `deletedAt`.
+
+### `excerpt`: por qué hay dos selects para un listado
+
+`GET /api/documents` devuelve un campo **`excerpt`** que no existe en la tabla: alimenta la vista previa de las tarjetas del front.
+
+```ts
+export type DocumentListItem = Prisma.DocumentGetPayload<{ select: typeof listSelect }> & {
+  excerpt: string;
+};
+```
+
+- `list()` pide `listQuerySelect` (con `contentText`), y **descarta ese campo en el `map`** dejando solo el extracto. NORMA: `contentText` completo **no sale nunca** de un listado — un texto de 50 KB por documento multiplicado por todo el árbol es justo lo que `listSelect` evitaba.
+- `toExcerpt()` recorta a **240 caracteres** (`EXCERPT_LENGTH`) cortando en el último espacio, para no partir palabras, y añade `…`. Conserva los saltos de línea a propósito: la vista de tarjetas los respeta.
+- El front tiene su propia versión aproximada en `toListItem()` (ver `apps/web/src/lib/CLAUDE.md`) para no dejar la vista previa vieja tras editar. **La fuente de verdad del extracto es esta.**
 
 ### Tri-estado de `?categoryId`
 
@@ -89,7 +104,7 @@ Todos bajo `@UseGuards(JwtAuthGuard)` a nivel de clase.
 ## Cómo verificar el módulo
 
 1. **Crear** un documento en la raíz y otro dentro de una carpeta.
-2. **Listar sin filtro** → salen todos, **sin `contentJson`** en la respuesta.
+2. **Listar sin filtro** → salen todos, **sin `contentJson` ni `contentText`**, y **con `excerpt`**. Con un documento de más de 240 caracteres, el extracto acaba en `…` y no parte una palabra.
 3. **`?categoryId=root`** → solo los de la raíz. **`?categoryId=<uuid>`** → solo los de esa carpeta. **`?categoryId=loquesea`** → 400.
 4. **`GET /:id`** → sí trae `contentJson` y `contentText`.
 5. **Guardar** con `PATCH /:id` — simular el autoguardado del editor y comprobar que `updatedAt` cambia.

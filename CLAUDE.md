@@ -37,8 +37,10 @@ Desde **`apps/api`**: `npm run prisma:generate`, `prisma:migrate` (= `prisma mig
 | Capa | Tecnología |
 |---|---|
 | Frontend (SPA) | **React 18 + Vite 8 + TypeScript 5.9** |
-| Editor enriquecido | **BlockNote 0.52**, variante **Ariakit** (la de Mantine exige React 19) + `shiki` para resaltado de código |
-| Estilos | **CSS global plano** en un único `apps/web/src/index.css`. Sin Tailwind ni librería de componentes |
+| Componentes UI | **Mantine 8** (`@mantine/core` + `@mantine/hooks`) + **`@tabler/icons-react`** |
+| Editor enriquecido | **BlockNote 0.52**, variante **Mantine** (`@blocknote/mantine`) + `shiki` para resaltado de código |
+| Estilos | Componentes de **Mantine** + un único `apps/web/src/index.css` (~320 líneas) para lo que no cubren. Sin Tailwind ni CSS Modules |
+| Tema | **Claro por defecto, oscuro con interruptor.** Un solo origen de verdad: el `colorScheme` de Mantine, que sigue también el editor |
 | Navegación / datos | **react-router-dom 7** + **React Context**. Sin TanStack Query |
 | Backend (API REST) | **NestJS 11 (TypeScript)** |
 | ORM | **Prisma 6** |
@@ -75,17 +77,20 @@ dathasoft-notes/
 │   │       ├── categories/
 │   │       └── documents/
 │   └── web/
-│       ├── index.html · vite.config.ts
+│       ├── index.html · vite.config.ts · postcss.config.cjs
 │       └── src/
-│           ├── main.tsx · App.tsx · index.css
+│           ├── main.tsx · App.tsx · index.css · theme.ts
 │           ├── auth/           ← AuthContext
-│           ├── categories/     ← CategoriesContext
+│           ├── categories/     ← CategoriesContext, folderIcons
 │           ├── documents/      ← DocumentEditor, DocumentsContext, codeBlock
-│           ├── components/     ← AppLayout, ProtectedRoute, Sidebar, modales
+│           ├── components/     ← AppShell (layout + header), Sidebar, modales
 │           ├── lib/api.ts      ← cliente HTTP + tipos
 │           └── pages/
 └── packages/shared/            ← vacío
 ```
+
+- `theme.ts` — tema de Mantine: paleta de marca, radios, y los catálogos de **colores** e **iconos** que puede tener una carpeta.
+- `postcss.config.cjs` — la config que pide Mantine (`light-dark()` y sus breakpoints).
 
 Cada módulo de dominio usa `X.module.ts` + `X.controller.ts` + `X.service.ts` + `dto/`.
 
@@ -154,7 +159,7 @@ Toda la configuración entorno-dependiente vive en ficheros `.env`. **Nunca se h
 
 ## Estado y documentos relacionados
 
-Fases **0-4 cerradas**; la siguiente es la **Fase 5** (tags + buscador).
+Fases **0-4 cerradas**, más el rediseño visual de la **Fase 4.6**; la siguiente es la **Fase 5** (tags + buscador). La **Fase 4.5** (endurecimiento de seguridad) sigue pendiente.
 
 | Documento | Para qué |
 |---|---|
@@ -164,10 +169,12 @@ Fases **0-4 cerradas**; la siguiente es la **Fase 5** (tags + buscador).
 
 ## Funcionalidades del producto
 
-- **Categorías = carpetas jerárquicas** (crear/renombrar/mover/borrar; sidebar en árbol). Al mover o borrar una carpeta con hijas, la app **pregunta el modo**: `subtree` (con toda su estructura) o `single` (sus hijas suben al padre inmediato). — **[hecho]**
+- **Categorías = carpetas jerárquicas** (crear/renombrar/mover/borrar; sidebar en árbol), cada una con **icono y color** propios. Al mover o borrar una carpeta con hijas, la app **pregunta el modo**: `subtree` (con toda su estructura) o `single` (sus hijas suben al padre inmediato). — **[hecho]**
 - **Documentos** dentro de carpetas, con orden manual y drag & drop. — **[hecho]**
+- **Vista de carpeta** en tres modos (tarjetas con vista previa, compacta, lista), con selección múltiple y acciones en lote. — **[hecho]**
 - **Editor BlockNote** con Markdown y resaltado de código multi-lenguaje. — **[hecho]**
 - **Autenticación** de usuarios con JWT. — **[hecho]**
+- **Tema claro y oscuro** con interruptor. — **[hecho]**
 - **Tags** transversales y **buscador global** (título + `contentText`, full-text de Postgres, combinable con tags). — *[Fase 5]*
 - **Favoritos** por usuario, con su sección en el sidebar. — *[Fase 6]*
 - **Papelera**: borrado suave con restaurar / borrar definitivo. — *[Fase 6]*

@@ -15,10 +15,17 @@ La página que los usa (`pages/DocumentPage.tsx`) vive fuera, pero varias reglas
 
 ## Reglas del módulo
 
-### El editor: BlockNote, variante Ariakit
+### El editor: BlockNote, variante Mantine
 
-- Paquetes: `@blocknote/core`, `@blocknote/react`, `@blocknote/ariakit` + `shiki`.
-- NORMA: **se usa la variante Ariakit, no la de Mantine** — la de Mantine exige React 19 y el proyecto va con React 18. No la cambies.
+- Paquetes: `@blocknote/core`, `@blocknote/react`, `@blocknote/mantine` + `shiki`.
+- NORMA: **se usa la variante Mantine**, la que corresponde a la librería de componentes de la app. Sus menús son componentes de Mantine, así que **heredan el tema solos** y no hay que remapear casi nada de `--bn-colors-*`. No la cambies por la de Ariakit ni por la de shadcn.
+  > Dato para no repetir el análisis: las **tres** variantes de BlockNote 0.52 declaran `react: ^18.0 || ^19.0`. Que la de Mantine exigiera React 19 fue cierto en su día, pero ya no lo es.
+- NORMA: **el tema del editor se pasa por prop**, leyendo el de la app:
+  ```tsx
+  const colorScheme = useComputedColorScheme('light');
+  <BlockNoteView editor={editor} theme={colorScheme} … />
+  ```
+  Nada de `theme="dark"` fijo: dejaría el editor descolgado del interruptor del header.
 - **No hay ningún paquete `@tiptap/*` instalado.** BlockNote usa TipTap/ProseMirror por debajo, pero el código **nunca toca esa API**. No importes de TipTap.
 - El schema parte de `defaultBlockSpecs` y **solo sustituye `codeBlock`**:
   ```ts
@@ -56,6 +63,8 @@ NORMA: si añades un bloque custom con texto (Fase 7), **asegúrate de que `extr
 
 `createCodeBlockSpec` con **21 lenguajes** declarados con nombre y aliases, tema shiki `github-dark-default` e `indentLineWithTab: true`.
 
+> Ese tema es oscuro y **no cambia con el tema de la app**. Por eso el bloque de código lleva fondo oscuro también en modo claro: es deliberado (ver `.claude/rules/frontend.md`), no un olvido.
+
 NORMA: **shiki se carga de forma diferida**, y así debe seguir:
 ```ts
 createHighlighter: () => import('shiki').then(({ createHighlighter }) => createHighlighter({ ... })),
@@ -74,6 +83,8 @@ Cache manual de listados, con **carga perezosa**:
 - Si la petición falla, la clave se rellena con `[]` para no dejar la carpeta en carga infinita.
 - A diferencia de `CategoriesContext` (que recarga entero tras cada mutación), aquí **sí hay actualizaciones optimistas**: `create`, `move`, `remove` y `reorder` mutan el mapa en local. `reorder` reordena antes de llamar a la API para que el drag & drop no parpadee.
 - `patchLocal()` existe para reflejar en el listado un cambio ya guardado por otra vía — el caso real es el título editado desde `DocumentPage`.
+- NORMA: los endpoints que devuelven un documento entero (`create`, `move`, `update`) dan un **`DocumentFull`**, y el mapa guarda **`DocumentListItem`**. La conversión pasa **siempre** por `toListItem()` de `lib/api.ts`: los dos tipos ya no son compatibles, porque el del listado lleva `excerpt` y no `contentText`.
+- **`current` / `setCurrent`** guardan el documento abierto para las migas de pan del header. Lo publica `DocumentPage` al cargarlo y lo limpia al desmontarse. Las mutaciones de aquí (`rename`, `move`, `remove`, `patchLocal`) lo mantienen al día, así que renombrar desde el sidebar también actualiza las migas.
 
 ## Validaciones requeridas
 

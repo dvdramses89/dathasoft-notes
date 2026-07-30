@@ -4,7 +4,7 @@ Repositorio de documentación y notas del equipo **DathaSoft** (DT = DaThaSoft).
 
 ## Stack
 
-- **Frontend (SPA):** React 18 + Vite + TypeScript · editor **BlockNote** · CSS propio
+- **Frontend (SPA):** React 18 + Vite + TypeScript · **Mantine 8** · editor **BlockNote** · tema claro/oscuro
 - **Backend (API REST):** NestJS + Prisma
 - **Base de datos:** PostgreSQL 16 (Docker en local)
 - **Auth:** JWT
