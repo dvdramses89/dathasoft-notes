@@ -1,5 +1,7 @@
+import { Button, Group, Modal, Radio, Stack, Text } from '@mantine/core';
 import { useMemo, useState } from 'react';
 import type { CategoryNode, TreeMode } from '../lib/api';
+import { DestinationPicker, type Destination } from './DestinationPicker';
 
 function collectSubtreeIds(node: CategoryNode): Set<string> {
   const ids = new Set<string>();
@@ -27,92 +29,60 @@ export function MoveModal({ target, tree, onCancel, onConfirm }: MoveModalProps)
     return ids;
   }, [target]);
 
-  // dest = null -> nada elegido; { parentId: null } -> raiz; { parentId: id } -> carpeta
-  const [dest, setDest] = useState<{ parentId: string | null } | null>(null);
+  const [dest, setDest] = useState<Destination>(undefined);
   const [mode, setMode] = useState<TreeMode>('subtree');
   const hasChildren = target.children.length > 0;
 
-  function renderNodes(nodes: CategoryNode[], depth: number) {
-    return nodes.map((node) => {
-      const disabled = disabledIds.has(node.id);
-      const selected = dest?.parentId === node.id;
-      return (
-        <div key={node.id}>
-          <button
-            type="button"
-            className={`dest-item${selected ? ' dest-item--selected' : ''}`}
-            style={{ paddingLeft: `${depth * 14 + 10}px` }}
-            disabled={disabled}
-            onClick={() => setDest({ parentId: node.id })}
-          >
-            {node.name}
-          </button>
-          {node.children.length > 0 && renderNodes(node.children, depth + 1)}
-        </div>
-      );
-    });
-  }
-
   return (
-    <div className="modal-overlay" onClick={onCancel}>
-      <div className="modal modal--wide" onClick={(e) => e.stopPropagation()}>
-        <h3 className="modal-title">Mover «{target.name}» a:</h3>
-
-        <div className="dest-tree">
-          <button
-            type="button"
-            className={`dest-item${dest?.parentId === null ? ' dest-item--selected' : ''}`}
-            onClick={() => setDest({ parentId: null })}
-          >
-            Raíz (nivel superior)
-          </button>
-          {renderNodes(tree, 0)}
-        </div>
+    <Modal opened onClose={onCancel} title={`Mover «${target.name}» a…`} size="md">
+      <Stack gap="md">
+        <DestinationPicker
+          tree={tree}
+          value={dest}
+          onChange={setDest}
+          disabledIds={disabledIds}
+          currentId={target.parentId}
+        />
 
         {hasChildren && (
-          <div className="move-mode">
-            <label className="radio">
-              <input
-                type="radio"
-                name="movemode"
-                checked={mode === 'subtree'}
-                onChange={() => setMode('subtree')}
+          <Radio.Group
+            value={mode}
+            onChange={(value) => setMode(value as TreeMode)}
+            label="Esta carpeta tiene subcarpetas"
+          >
+            <Stack gap="xs" mt="xs">
+              <Radio value="subtree" label="Mover toda la estructura" />
+              <Radio
+                value="single"
+                label="Mover solo esta carpeta"
+                description="Las subcarpetas suben al nivel de origen"
               />
-              <span>Mover toda la estructura</span>
-            </label>
-            <label className="radio">
-              <input
-                type="radio"
-                name="movemode"
-                checked={mode === 'single'}
-                onChange={() => setMode('single')}
-              />
-              <span>
-                Mover solo esta carpeta
-                <small>Las subcarpetas suben al nivel de origen</small>
-              </span>
-            </label>
-          </div>
+            </Stack>
+          </Radio.Group>
         )}
 
-        <div className="modal-actions">
-          <button className="btn btn--ghost" type="button" onClick={onCancel}>
+        <Group justify="flex-end" gap="sm">
+          <Button variant="default" onClick={onCancel}>
             Cancelar
-          </button>
-          <button
-            className="btn"
-            type="button"
-            disabled={dest === null}
+          </Button>
+          <Button
+            disabled={dest === undefined}
             onClick={() => {
-              if (dest !== null) {
-                onConfirm(dest.parentId, mode);
+              if (dest !== undefined) {
+                onConfirm(dest, mode);
               }
             }}
           >
             Mover
-          </button>
-        </div>
-      </div>
-    </div>
+          </Button>
+        </Group>
+
+        {dest === undefined && (
+          <Text size="xs" c="dimmed" ta="right" mt={-8}>
+            Elige una carpeta de destino
+          </Text>
+        )}
+      </Stack>
+    </Modal>
   );
 }

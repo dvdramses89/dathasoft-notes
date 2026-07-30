@@ -1,14 +1,37 @@
+/* ================================================================
+   DTNotes — CSS propio de la aplicacion.
+
+   Mantine aporta botones, campos, modales, menus, tarjetas y avatares:
+   aqui solo queda lo que no cubre (el arbol del sidebar, la pagina de
+   documento y la integracion del editor) y los tokens del shell.
+
+   Orden de las zonas: tokens -> base -> shell -> arbol -> vista de
+   carpeta -> documento -> editor BlockNote.
+   ================================================================ */
+
+/* ================= Tokens del shell ================= */
+
+/* Se declaran los dos temas a mano en lugar de con light-dark() para que el
+   valor de cada uno se lea de un tiron y sea facil de ajustar. */
 :root {
-  color-scheme: light dark;
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --bg: #0f172a;
-  --card: #1e293b;
-  --text: #e2e8f0;
-  --muted: #94a3b8;
-  --ok: #22c55e;
-  --error: #ef4444;
-  --accent: #6366f1;
+  --app-bg: #f4f5f7;
+  --app-surface: #ffffff;
+  --app-border: #e7e8ec;
+  --app-hover: #eceef2;
+  --app-active: #e2e5ea;
+  --app-shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.06);
 }
+
+[data-mantine-color-scheme='dark'] {
+  --app-bg: var(--mantine-color-dark-8);
+  --app-surface: var(--mantine-color-dark-7);
+  --app-border: var(--mantine-color-dark-4);
+  --app-hover: var(--mantine-color-dark-6);
+  --app-active: var(--mantine-color-dark-5);
+  --app-shadow: none;
+}
+
+/* ================= Base ================= */
 
 * {
   box-sizing: border-box;
@@ -16,791 +39,265 @@
 
 body {
   margin: 0;
-  min-height: 100vh;
-  display: grid;
-  place-items: center;
-  background: radial-gradient(1200px 600px at 50% -10%, #1e293b, var(--bg));
-  color: var(--text);
+  background: var(--app-bg);
 }
 
-.card {
-  width: min(440px, 92vw);
-  background: var(--card);
-  border: 1px solid rgba(148, 163, 184, 0.15);
-  border-radius: 16px;
-  padding: 2.5rem;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
-  text-align: center;
+/* El shell ocupa la ventana completa y no hace scroll: el scroll vive dentro
+   del sidebar y del contenido, por separado. */
+.app-main {
+  height: 100dvh;
+  overflow: hidden;
 }
 
-.brand {
-  margin: 0;
-  font-size: 2.25rem;
-  letter-spacing: -0.03em;
-  background: linear-gradient(120deg, #a5b4fc, #818cf8);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+/* ================= Shell: header y navbar ================= */
+
+.app-header {
+  background: var(--app-bg);
+  border-bottom: 1px solid var(--app-border);
 }
 
-.subtitle {
-  margin: 0.25rem 0 1.75rem;
-  color: var(--muted);
-  font-size: 0.95rem;
+.app-navbar {
+  background: var(--app-bg);
+  border-right: 1px solid var(--app-border);
 }
 
-.badge {
-  display: inline-block;
-  padding: 0.5rem 1rem;
-  border-radius: 999px;
-  font-size: 0.9rem;
-  font-weight: 600;
-}
-
-.badge--loading {
-  background: rgba(99, 102, 241, 0.15);
-  color: #a5b4fc;
-}
-
-.badge--ok {
-  background: rgba(34, 197, 94, 0.15);
-  color: var(--ok);
-}
-
-.badge--error {
-  background: rgba(239, 68, 68, 0.15);
-  color: var(--error);
-}
-
-.details {
-  margin: 1.75rem 0 0;
-  display: grid;
-  gap: 0.5rem;
-  text-align: left;
-}
-
-.details > div {
-  display: flex;
-  justify-content: space-between;
-  border-top: 1px solid rgba(148, 163, 184, 0.12);
-  padding-top: 0.5rem;
-}
-
-.details dt {
-  color: var(--muted);
-  font-size: 0.85rem;
-}
-
-.details dd {
-  margin: 0;
-  font-weight: 600;
-  font-size: 0.85rem;
-}
-
-.hint {
-  margin: 1.5rem 0 0;
-  color: var(--muted);
-  font-size: 0.85rem;
-  line-height: 1.5;
-}
-
-code {
-  background: rgba(148, 163, 184, 0.15);
-  padding: 0.1rem 0.35rem;
-  border-radius: 6px;
-  font-size: 0.8rem;
-}
-
-.form {
-  margin-top: 1.75rem;
-  display: grid;
-  gap: 1rem;
-  text-align: left;
-}
-
-.field {
-  display: grid;
-  gap: 0.35rem;
-}
-
-.field > span {
-  font-size: 0.85rem;
-  color: var(--muted);
-}
-
-.field input {
-  width: 100%;
-  padding: 0.65rem 0.85rem;
-  border-radius: 10px;
-  border: 1px solid rgba(148, 163, 184, 0.25);
-  background: rgba(15, 23, 42, 0.6);
-  color: var(--text);
-  font-size: 0.95rem;
-  outline: none;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
-}
-
-.field input:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25);
-}
-
-.field-hint {
-  color: var(--muted);
-  font-size: 0.75rem;
-}
-
-.form-error {
-  margin: 0;
-  color: var(--error);
-  font-size: 0.85rem;
-}
-
-.btn {
-  width: 100%;
-  padding: 0.7rem 1rem;
-  border: 1px solid transparent;
-  border-radius: 10px;
-  background: linear-gradient(120deg, #6366f1, #818cf8);
-  color: white;
-  font-size: 0.95rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: opacity 0.15s ease, transform 0.05s ease;
-}
-
-.btn:hover {
-  opacity: 0.92;
-}
-
-.btn:active {
-  transform: translateY(1px);
-}
-
-.btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.btn--ghost {
-  background: transparent;
-  border: 1px solid rgba(148, 163, 184, 0.3);
-  color: var(--text);
-}
-
-.btn--danger {
-  background: linear-gradient(120deg, #ef4444, #dc2626);
-  border-color: transparent;
-}
-
-/* Variante compacta, para acciones en linea (p. ej. el sidebar) */
-.btn--sm {
-  width: auto;
-  padding: 0.35rem 0.75rem;
-  border-radius: 8px;
-  font-size: 0.8rem;
+/* Migas de pan: el ultimo tramo es el actual y no se puede pulsar. */
+.crumb-current {
+  color: var(--mantine-color-text);
   font-weight: 500;
 }
 
-.switch {
-  margin: 1.5rem 0 0;
-  color: var(--muted);
-  font-size: 0.85rem;
-}
+/* ================= Arbol del sidebar ================= */
 
-.switch a {
-  color: #a5b4fc;
-  text-decoration: none;
-  font-weight: 600;
-}
-
-.switch a:hover {
-  text-decoration: underline;
-}
-
-/* ================= App shell (sidebar + contenido) ================= */
-
-.app-shell {
-  position: fixed;
-  inset: 0;
-  display: flex;
-  background: var(--bg);
-}
-
-.sidebar {
-  width: 264px;
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  background: #0b1220;
-  border-right: 1px solid rgba(148, 163, 184, 0.12);
-}
-
-.sidebar-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.9rem 1rem 0.6rem;
-}
-
-.sidebar-title {
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-
-.icon-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 26px;
-  height: 26px;
-  border: none;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--muted);
-  font-size: 1.1rem;
-  line-height: 1;
-  cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
-}
-
-.icon-btn:hover {
-  background: rgba(148, 163, 184, 0.14);
-  color: var(--text);
-}
-
-.add-folder {
-  padding: 0.25rem 0.75rem 0.6rem;
-}
-
-.add-folder-hint {
-  font-size: 0.72rem;
-  color: var(--muted);
-  margin-bottom: 0.3rem;
-}
-
-.add-folder-hint strong {
-  color: #a5b4fc;
-}
-
-.add-folder-input {
-  width: 100%;
-  padding: 0.45rem 0.6rem;
-  border-radius: 8px;
-  border: 1px solid rgba(148, 163, 184, 0.25);
-  background: rgba(15, 23, 42, 0.7);
-  color: var(--text);
-  font-size: 0.85rem;
-  outline: none;
-}
-
-.add-folder-input:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
-}
-
-.add-folder-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.4rem;
-  margin-top: 0.45rem;
-}
-
-.tree {
+.tree-scroll {
   flex: 1;
-  overflow-y: auto;
-  padding: 0.25rem 0.5rem 1rem;
+  min-height: 0;
 }
 
-.tree-empty {
-  color: var(--muted);
-  font-size: 0.82rem;
-  padding: 0.75rem;
-  line-height: 1.4;
-}
-
-.tree-root,
-.tree-children {
+.tree-list {
   list-style: none;
   margin: 0;
   padding: 0;
 }
 
-.tree-item {
+.tree-row {
   display: flex;
   align-items: center;
-  gap: 0.35rem;
-  padding: 0.32rem 0.5rem;
-  border-radius: 8px;
+  gap: 0.375rem;
+  width: 100%;
+  min-height: 30px;
+  padding: 0.25rem 0.375rem;
+  border: 1px solid transparent;
+  border-radius: var(--mantine-radius-sm);
+  color: var(--mantine-color-text);
+  font-size: var(--mantine-font-size-sm);
   cursor: pointer;
-  color: #cbd5e1;
-  font-size: 0.88rem;
   -webkit-user-select: none;
   user-select: none;
-  transition: background 0.12s ease, color 0.12s ease;
+  transition:
+    background-color 0.1s,
+    color 0.1s;
 }
 
-.tree-item:hover {
-  background: rgba(148, 163, 184, 0.1);
-  color: var(--text);
+.tree-row:hover {
+  background: var(--app-hover);
 }
 
-.tree-item--selected {
-  background: rgba(99, 102, 241, 0.22);
-  color: #e0e7ff;
+.tree-row:hover .tree-row-actions {
+  opacity: 1;
 }
 
-.tree-item--dragging {
-  opacity: 0.4;
+/* Carpeta marcada como destino de las acciones nuevas. */
+.tree-row--selected {
+  background: var(--app-active);
+  font-weight: 500;
 }
 
-.tree-item--drop-before {
-  box-shadow: inset 0 2px 0 var(--accent);
+/* Documento abierto ahora mismo. */
+.tree-row--active {
+  background: var(--mantine-primary-color-light);
+  color: var(--mantine-primary-color-light-color);
+  font-weight: 500;
 }
 
-.tree-item--drop-after {
-  box-shadow: inset 0 -2px 0 var(--accent);
+.tree-row--dragging {
+  opacity: 0.45;
 }
 
+/* Indicadores de donde caera el elemento arrastrado. */
+.tree-row--drop-before {
+  border-top-color: var(--mantine-primary-color-filled);
+}
+
+.tree-row--drop-after {
+  border-bottom-color: var(--mantine-primary-color-filled);
+}
+
+.tree-row-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Hueco fijo del chevron: sin el, las filas sin hijos no alinean su icono. */
 .tree-chevron {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 14px;
-  height: 14px;
-  flex-shrink: 0;
-  color: var(--muted);
+  width: 16px;
+  height: 16px;
+  flex: none;
+  color: var(--mantine-color-dimmed);
+  transition: transform 0.15s;
 }
 
-.chevron {
-  transition: transform 0.15s ease;
-}
-
-.chevron--open {
+.tree-chevron--open {
   transform: rotate(90deg);
 }
 
-.folder-icon {
-  flex-shrink: 0;
-  color: #818cf8;
-}
-
-.tree-name {
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.rename-input {
-  flex: 1;
-  min-width: 0;
-  padding: 0.15rem 0.4rem;
-  border-radius: 6px;
-  border: 1px solid var(--accent);
-  background: rgba(15, 23, 42, 0.9);
-  color: var(--text);
-  font-size: 0.85rem;
-  outline: none;
-}
-
-.tree-actions {
+/* Acciones de la fila: ocultas hasta el hover, pero manteniendo su hueco para
+   que el nombre no se mueva al aparecer. */
+.tree-row-actions {
   display: flex;
-  gap: 0.1rem;
-  margin-left: auto;
+  gap: 2px;
+  flex: none;
   opacity: 0;
-  transition: opacity 0.12s ease;
+  transition: opacity 0.1s;
 }
 
-.tree-item:hover .tree-actions,
-.tree-item--selected .tree-actions {
-  opacity: 1;
+/* En pantallas tactiles no hay hover: se dejan siempre visibles. */
+@media (hover: none) {
+  .tree-row-actions {
+    opacity: 1;
+  }
 }
 
-.tree-action {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
-  border: none;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--muted);
+/* ================= Vista de carpeta (tarjetas / lista) ================= */
+
+.folder-card {
   cursor: pointer;
-  transition: background 0.12s ease, color 0.12s ease;
+  background: var(--app-surface);
+  transition:
+    border-color 0.1s,
+    box-shadow 0.1s;
 }
 
-.tree-action:hover {
-  background: rgba(148, 163, 184, 0.2);
-  color: var(--text);
+.folder-card:hover {
+  border-color: var(--mantine-primary-color-filled);
 }
 
-/* Modal */
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(2, 6, 23, 0.6);
-  display: grid;
-  place-items: center;
-  padding: 1rem;
-  z-index: 50;
+.folder-card--selected {
+  border-color: var(--mantine-primary-color-filled);
+  box-shadow: 0 0 0 1px var(--mantine-primary-color-filled);
 }
 
-.modal {
-  width: min(420px, 100%);
-  background: var(--card);
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  border-radius: 14px;
-  padding: 1.5rem;
-  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.5);
-}
-
-.modal-title {
-  margin: 0 0 0.5rem;
-  font-size: 1.1rem;
-}
-
-.modal-text {
-  margin: 0 0 1.25rem;
-  color: var(--muted);
-  font-size: 0.9rem;
-  line-height: 1.4;
-}
-
-.modal-actions {
-  display: flex;
-  gap: 0.6rem;
-  justify-content: flex-end;
-}
-
-.modal-actions--stack {
-  flex-direction: column;
-}
-
-.modal-actions .btn {
-  width: auto;
-}
-
-.modal-actions--stack .btn {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.15rem;
-}
-
-.modal-actions--stack .btn small {
-  font-weight: 400;
-  font-size: 0.72rem;
-  opacity: 0.85;
-}
-
-.modal-cancel {
-  background: transparent;
-  border: none;
-  color: var(--muted);
-  font-size: 0.85rem;
-  cursor: pointer;
-  padding: 0.4rem;
-}
-
-.modal-cancel:hover {
-  color: var(--text);
-}
-
-.modal--wide {
-  width: min(460px, 100%);
-}
-
-/* Selector de destino (mover) */
-.dest-tree {
-  max-height: 240px;
-  overflow-y: auto;
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  border-radius: 10px;
-  padding: 0.35rem;
-  margin-bottom: 1rem;
-}
-
-.dest-item {
-  display: block;
-  width: 100%;
-  text-align: left;
-  padding: 0.4rem 0.6rem;
-  border: none;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--text);
-  font-size: 0.88rem;
-  cursor: pointer;
+/* Extracto del documento en la tarjeta: se corta con un degradado en vez de
+   con puntos suspensivos, para que se lea como un trozo de pagina. */
+.card-preview {
+  position: relative;
+  max-height: 8.5rem;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  transition: background 0.12s ease;
+  font-size: var(--mantine-font-size-xs);
+  line-height: 1.5;
+  color: var(--mantine-color-dimmed);
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
-.dest-item:hover:not(:disabled) {
-  background: rgba(148, 163, 184, 0.12);
+.card-preview::after {
+  content: '';
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  height: 2.5rem;
+  background: linear-gradient(to bottom, transparent, var(--app-surface));
 }
 
-.dest-item--selected {
-  background: rgba(99, 102, 241, 0.28) !important;
-  color: #e0e7ff;
-}
-
-.dest-item:disabled {
-  color: var(--muted);
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
-/* Opciones de modo (radios) */
-.move-mode {
-  display: grid;
-  gap: 0.5rem;
-  margin-bottom: 1.25rem;
-}
-
-.radio {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.55rem;
-  padding: 0.5rem 0.6rem;
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  border-radius: 10px;
-  cursor: pointer;
-  font-size: 0.88rem;
-}
-
-.radio:hover {
-  background: rgba(148, 163, 184, 0.08);
-}
-
-.radio input {
-  margin-top: 0.15rem;
-  accent-color: var(--accent);
-}
-
-.radio small {
-  display: block;
-  color: var(--muted);
-  font-size: 0.75rem;
-  margin-top: 0.15rem;
-}
-
-.sidebar-footer {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.6rem 0.75rem;
-  border-top: 1px solid rgba(148, 163, 184, 0.12);
-}
-
-.sidebar-user {
-  display: flex;
-  align-items: center;
-  gap: 0.55rem;
-  min-width: 0;
-  flex: 1;
-}
-
-.avatar {
-  width: 30px;
-  height: 30px;
-  flex-shrink: 0;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  background: linear-gradient(120deg, #6366f1, #818cf8);
-  color: white;
-  font-size: 0.8rem;
-  font-weight: 700;
-}
-
-.sidebar-user-info {
-  min-width: 0;
-}
-
-.sidebar-user-name {
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: var(--text);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.sidebar-user-email {
-  font-size: 0.72rem;
-  color: var(--muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.content {
-  flex: 1;
-  overflow-y: auto;
-  background: radial-gradient(1000px 500px at 30% -10%, #16223c, var(--bg));
-}
-
-.content-inner {
-  max-width: 900px;
-  margin: 0 auto;
-  padding: 2.5rem 2rem;
-}
-
-.content-title {
-  margin: 0;
-  font-size: 1.6rem;
-  letter-spacing: -0.02em;
-}
-
-.content-subtitle {
-  margin: 0.4rem 0 0;
-  color: var(--muted);
-  font-size: 0.95rem;
-}
-
-/* ---------- Documentos: filas del arbol ---------- */
-
-.sidebar-top-actions {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-}
-
-.doc-icon {
-  flex-shrink: 0;
-  color: #94a3b8;
-}
-
-.tree-item--doc .tree-name {
-  color: #cbd5e1;
-}
-
-.tree-item--active {
-  background: rgba(99, 102, 241, 0.28);
-  color: #e0e7ff;
-}
-
-.tree-item--active .doc-icon {
-  color: #a5b4fc;
-}
-
-.tree-hint {
-  list-style: none;
-  color: var(--muted);
-  font-size: 0.78rem;
-  padding: 0.3rem 0.5rem;
-  font-style: italic;
-}
-
-/* ---------- Pagina del documento ---------- */
-
-.doc-header {
+/* Fila de la vista en lista. */
+.row-item {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  margin-bottom: 1.25rem;
+  padding: 0.625rem 0.75rem;
+  border-radius: var(--mantine-radius-md);
+  cursor: pointer;
+  transition: background-color 0.1s;
+}
+
+.row-item:hover {
+  background: var(--app-hover);
+}
+
+.row-item + .row-item {
+  border-top: 1px solid var(--app-border);
+}
+
+/* ================= Pagina del documento ================= */
+
+/* La hoja blanca sobre el fondo gris, como en el resto de la app. */
+.doc-surface {
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  border-radius: var(--mantine-radius-lg);
+  box-shadow: var(--app-shadow);
 }
 
 .doc-title-input {
-  flex: 1;
-  min-width: 0;
+  width: 100%;
+  padding: 0;
+  border: 0;
   background: transparent;
-  border: 1px solid transparent;
-  border-radius: 8px;
-  padding: 0.4rem 0.55rem;
-  margin-left: -0.55rem;
-  color: var(--text);
+  color: var(--mantine-color-text);
   font-family: inherit;
-  font-size: 1.6rem;
+  font-size: 1.75rem;
   font-weight: 600;
   letter-spacing: -0.02em;
-}
-
-.doc-title-input:hover {
-  border-color: rgba(148, 163, 184, 0.2);
-}
-
-.doc-title-input:focus {
   outline: none;
-  border-color: var(--accent);
-  background: rgba(15, 23, 42, 0.5);
 }
 
-.save-indicator {
-  flex-shrink: 0;
-  font-size: 0.78rem;
-  color: var(--muted);
+.doc-title-input::placeholder {
+  color: var(--mantine-color-dimmed);
 }
 
-.save-indicator--saved {
-  color: var(--ok);
-}
+/* ================= Editor BlockNote ================= */
 
-.save-indicator--error {
-  color: var(--error);
-}
-
-/* ---------- Editor BlockNote ---------- */
-
-/* El tema oscuro del editor trae grises calidos propios; los remapeamos a la
-   paleta azul de la app para que no parezca una caja pegada encima. */
-.doc-editor {
-  margin: 0 -0.5rem;
-}
-
-/* Se aplica a todo `.bn-root.dark` (no solo al contenedor del editor) porque
-   los menus flotantes —barra de formato, menu "/", tooltips— se montan en su
-   propio `.bn-root` anidado, que no lleva el atributo data-color-scheme. */
-.bn-root.dark {
-  --bn-colors-editor-background: transparent;
-  --bn-colors-editor-text: #e2e8f0;
-  --bn-colors-side-menu: #64748b;
-  --bn-colors-menu-background: #1e293b;
-  --bn-colors-menu-text: #e2e8f0;
-  --bn-colors-tooltip-background: #0f172a;
-  --bn-colors-tooltip-text: #e2e8f0;
-  --bn-colors-hovered-background: #243149;
-  --bn-colors-hovered-text: #e2e8f0;
-  --bn-colors-selected-background: #6366f1;
-  --bn-colors-selected-text: #ffffff;
-  --bn-colors-disabled-background: #1e293b;
-  --bn-colors-disabled-text: #64748b;
-  --bn-colors-shadow: rgba(2, 6, 23, 0.6);
-  --bn-colors-border: rgba(148, 163, 184, 0.2);
-  --bn-colors-highlights-gray-background: #334155;
+/* La variante Mantine del editor ya usa los componentes de Mantine para sus
+   menus, asi que hereda el tema solo. Aqui unicamente se quita el fondo propio
+   del editor (la hoja ya lo pone) y se recupera la fuente de la app, que su
+   CSS fija en Inter. */
+.bn-container {
   font-family: inherit;
 }
 
-/* El editor trae su propio padding lateral; lo reducimos para alinear el texto
-   con el titulo del documento. */
+.bn-container[data-color-scheme='light'],
+.bn-container[data-color-scheme='dark'] {
+  --bn-colors-editor-background: transparent;
+  --bn-colors-editor-text: var(--mantine-color-text);
+}
+
 .doc-editor .bn-editor {
-  padding-inline: 0.5rem;
+  padding-inline: 0;
   background: transparent;
 }
 
-/* El placeholder del bloque vacio, mas discreto */
+/* El placeholder del bloque vacio, mas discreto. */
 .doc-editor .bn-block-content[data-is-empty-and-focused] p::before {
-  color: var(--muted);
+  color: var(--mantine-color-dimmed);
 }
 
-/* ---- Bloques de codigo (resaltado con shiki) ---- */
-
+/* ---- Bloques de codigo (resaltado con shiki) ----
+   El tema de shiki es `github-dark-default`, oscuro en los dos modos: se deja
+   asi a proposito para que el resaltado no cambie de paleta al cambiar de tema.
+   El bloque lleva entonces su propio fondo oscuro tambien en modo claro. */
 .doc-editor [data-content-type='codeBlock'] {
-  background: rgba(2, 6, 23, 0.55);
-  border: 1px solid rgba(148, 163, 184, 0.16);
-  border-radius: 10px;
+  background: #0d1117;
+  border: 1px solid var(--app-border);
+  border-radius: var(--mantine-radius-md);
   padding: 0.5rem 0.75rem;
+  overflow-x: auto;
 }
 
-/* El fondo va en el bloque, no en cada linea */
 .doc-editor [data-content-type='codeBlock'] pre,
 .doc-editor [data-content-type='codeBlock'] code {
   background: transparent;
@@ -808,129 +305,19 @@ code {
   line-height: 1.55;
 }
 
-/* Selector de lenguaje: visible y con el estilo de la app */
+/* Selector de lenguaje del bloque de codigo. */
 .doc-editor [data-content-type='codeBlock'] select {
-  background-color: var(--card);
-  color: var(--muted);
-  border: 1px solid rgba(148, 163, 184, 0.2);
-  border-radius: 6px;
-  padding: 0.1rem 0.3rem;
+  color: #8b949e;
+  background: transparent;
+  border: 1px solid rgba(139, 148, 158, 0.3);
+  border-radius: var(--mantine-radius-sm);
   font-family: inherit;
-  font-size: 0.72rem;
+  font-size: var(--mantine-font-size-xs);
+  padding: 0.1rem 0.25rem;
   cursor: pointer;
-  opacity: 0.65;
-  transition: opacity 0.12s ease, color 0.12s ease;
 }
 
-.doc-editor [data-content-type='codeBlock']:hover select,
-.doc-editor [data-content-type='codeBlock'] select:focus {
-  opacity: 1;
-  color: var(--text);
-}
-
-/* Menus del editor (menu "/", barra de formato, desplegables). Ariakit fija
-   estos colores en su hoja de estilos con valores propios, asi que se
-   sobreescriben aqui para alinearlos con la paleta de la app. */
-.bn-root.dark .bn-ak-menu,
-.bn-root.dark .bn-ak-popover,
-.bn-root.dark .bn-ak-toolbar {
-  background-color: var(--card);
-  border-color: rgba(148, 163, 184, 0.2);
-  color: var(--text);
-  box-shadow: 0 12px 28px rgba(2, 6, 23, 0.55);
-}
-
-/* ---- Barra flotante de formato (al seleccionar texto) ----
-   Ariakit la deja con `overflow: scroll` fijo (barras siempre visibles) y
-   botones de 2.5rem. Se compacta y se dejan envolver los controles en varias
-   filas si no caben, en lugar de recortarlos con scroll. */
-.bn-root .bn-ak-toolbar {
-  overflow: visible;
-  flex-wrap: wrap;
-  /* Ancho suficiente para que los controles quepan en una sola fila, pero
-     limitado al espacio visible junto al sidebar: en ventanas estrechas
-     envuelve a otra fila en lugar de recortarse con scroll. */
-  max-width: min(34rem, calc(100vw - 2rem));
-  gap: 0.15rem;
-  padding: 0.3rem;
-  border-radius: 10px;
-  height: auto;
-  justify-content: flex-start;
-}
-
-.bn-root .bn-ak-toolbar .bn-ak-button {
-  height: 1.75rem;
-  min-width: 1.75rem;
-  padding: 0 0.4rem;
-  border-radius: 6px;
-  font-size: 0.82rem;
-  line-height: 1.2;
-  /* Ariakit dibuja el relieve con box-shadow; se quita para un look plano. */
-  box-shadow: none;
-  background-color: transparent;
-  color: var(--text);
-}
-
-.bn-root .bn-ak-toolbar .bn-ak-button svg {
-  width: 15px;
-  height: 15px;
-}
-
-.bn-root.dark .bn-ak-toolbar .bn-ak-button:hover {
-  background-color: rgba(148, 163, 184, 0.16);
-}
-
-/* Botón activo (negrita aplicada, alineación actual…) */
-.bn-root.dark .bn-ak-toolbar .bn-ak-button[data-selected] {
-  background-color: rgba(99, 102, 241, 0.28);
-  color: #e0e7ff;
-  box-shadow: none;
-  padding-top: 0;
-}
-
-/* El desplegable de tipo de bloque ("Párrafo") viene con width: 200px fijo */
-.bn-root .bn-ak-toolbar .bn-ak-select > .bn-ak-button,
-.bn-root .bn-ak-toolbar .bn-ak-button.bn-ak-select {
-  width: auto;
-  min-width: 0;
-  gap: 0.25rem;
-}
-
-/* El item resaltado del menu: ariakit lo pinta en cian. En el menu "/" el
-   item marcado usa aria-selected; en los desplegables, data-active-item. */
-.bn-root.dark .bn-ak-menu-item[aria-selected='true'],
-.bn-root.dark .bn-ak-menu-item[data-active-item],
-.bn-root.dark .bn-ak-select-item[aria-selected='true'],
-.bn-root.dark .bn-ak-select-item[data-active-item] {
-  background-color: var(--accent);
-  color: #fff;
-}
-
-.bn-root.dark .bn-ak-group-label {
-  color: var(--muted);
-}
-
-.bn-root.dark .bn-ak-badge {
-  background-color: rgba(148, 163, 184, 0.16);
-  color: var(--muted);
-}
-
-.bn-root.dark .bn-ak-button:hover {
-  background-color: rgba(148, 163, 184, 0.14);
-}
-
-.bn-root.dark .bn-ak-input {
-  background-color: rgba(15, 23, 42, 0.7);
-  border-color: rgba(148, 163, 184, 0.25);
-  color: var(--text);
-}
-
-/* Responsive: en pantallas estrechas el sidebar se estrecha */
-@media (max-width: 640px) {
-  .sidebar {
-    width: 210px;
-  }
-  .content-inner {
-    padding: 1.5rem 1.1rem;
-  }
+.doc-editor [data-content-type='codeBlock'] select option {
+  color: var(--mantine-color-text);
+  background: var(--app-surface);
 }

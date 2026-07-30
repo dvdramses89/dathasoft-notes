@@ -1,3 +1,16 @@
+import {
+  Alert,
+  Anchor,
+  Button,
+  Center,
+  Paper,
+  PasswordInput,
+  Stack,
+  Text,
+  TextInput,
+  Title,
+} from '@mantine/core';
+import { IconAlertCircle } from '@tabler/icons-react';
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
@@ -27,54 +40,71 @@ export function RegisterPage() {
   }
 
   return (
-    <main className="card">
-      <h1 className="brand">DTNotes</h1>
-      <p className="subtitle">Crea tu cuenta</p>
+    <Center mih="100dvh" p="md">
+      <Paper withBorder radius="lg" p="xl" w="100%" maw={420} shadow="sm">
+        <Stack gap="lg">
+          <Stack gap={4} align="center">
+            <Title order={1} fz="2rem" c="brand">
+              DTNotes
+            </Title>
+            <Text size="sm" c="dimmed">
+              Crea tu cuenta
+            </Text>
+          </Stack>
 
-      <form className="form" onSubmit={onSubmit}>
-        <label className="field">
-          <span>Nombre</span>
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            required
-            autoComplete="name"
-          />
-        </label>
-        <label className="field">
-          <span>Email</span>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            autoComplete="email"
-          />
-        </label>
-        <label className="field">
-          <span>Contraseña</span>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            minLength={8}
-            autoComplete="new-password"
-          />
-          <small className="field-hint">Mínimo 8 caracteres</small>
-        </label>
+          <form onSubmit={onSubmit}>
+            <Stack gap="md">
+              <TextInput
+                label="Nombre"
+                required
+                autoComplete="name"
+                value={name}
+                onChange={(e) => setName(e.currentTarget.value)}
+              />
+              <TextInput
+                label="Email"
+                type="email"
+                required
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.currentTarget.value)}
+              />
+              <PasswordInput
+                label="Contraseña"
+                required
+                minLength={8}
+                autoComplete="new-password"
+                description="Mínimo 8 caracteres"
+                value={password}
+                onChange={(e) => setPassword(e.currentTarget.value)}
+              />
 
-        {error && <p className="form-error">{error}</p>}
+              {error && (
+                <Alert
+                  variant="light"
+                  color="red"
+                  icon={<IconAlertCircle size={16} />}
+                  radius="md"
+                  p="xs"
+                >
+                  <Text size="sm">{error}</Text>
+                </Alert>
+              )}
 
-        <button className="btn" type="submit" disabled={submitting}>
-          {submitting ? 'Creando…' : 'Crear cuenta'}
-        </button>
-      </form>
+              <Button type="submit" loading={submitting} fullWidth>
+                Crear cuenta
+              </Button>
+            </Stack>
+          </form>
 
-      <p className="switch">
-        ¿Ya tienes cuenta? <Link to="/login">Inicia sesión</Link>
-      </p>
-    </main>
+          <Text size="sm" c="dimmed" ta="center">
+            ¿Ya tienes cuenta?{' '}
+            <Anchor component={Link} to="/login" size="sm">
+              Inicia sesión
+            </Anchor>
+          </Text>
+        </Stack>
+      </Paper>
+    </Center>
   );
 }

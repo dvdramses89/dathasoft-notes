@@ -114,10 +114,22 @@ export function getCategories(): Promise<CategoryTreeResult> {
 export function createCategory(input: {
   name: string;
   parentId?: string | null;
+  /** Nombre de color de Mantine (ver FOLDER_COLORS en theme.ts). */
+  color?: string;
+  /** Clave del catalogo de iconos (ver folderIcons.tsx). */
+  icon?: string;
 }): Promise<{ id: string }> {
-  const body: { name: string; parentId?: string } = { name: input.name };
+  const body: { name: string; parentId?: string; color?: string; icon?: string } = {
+    name: input.name,
+  };
   if (input.parentId) {
     body.parentId = input.parentId;
+  }
+  if (input.color) {
+    body.color = input.color;
+  }
+  if (input.icon) {
+    body.icon = input.icon;
   }
   return request<{ id: string }>('/categories', {
     method: 'POST',
@@ -167,8 +179,8 @@ export function reorderCategories(
 
 // ---------------- Documentos ----------------
 
-/** Documento en un listado (sin el contenido del editor). */
-export interface DocumentListItem {
+/** Campos que comparten las dos formas de documento que devuelve la API. */
+interface DocumentBase {
   id: string;
   title: string;
   categoryId: string | null;
@@ -177,10 +189,28 @@ export interface DocumentListItem {
   updatedAt: string;
 }
 
+/** Documento en un listado: sin el contenido, con un extracto para la vista previa. */
+export interface DocumentListItem extends DocumentBase {
+  excerpt: string;
+}
+
 /** Documento completo, con el contenido del editor. */
-export interface DocumentFull extends DocumentListItem {
+export interface DocumentFull extends DocumentBase {
   contentJson: unknown;
   contentText: string;
+}
+
+/**
+ * Convierte la respuesta completa en un item de listado, para reflejar en la
+ * cache local un documento recien creado, movido o guardado.
+ *
+ * El extracto canonico lo calcula la API; este recorte es una aproximacion para
+ * que la vista previa no se quede vieja hasta el siguiente listado.
+ */
+export function toListItem(doc: DocumentFull): DocumentListItem {
+  const { contentJson: _ignored, contentText, ...base } = doc;
+  const text = contentText.trim();
+  return { ...base, excerpt: text.length > 240 ? `${text.slice(0, 240)}…` : text };
 }
 
 /** Sin filtro = todos; null = solo los de la raiz; uuid = los de esa carpeta. */

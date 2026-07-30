@@ -13,7 +13,9 @@ import {
   getDocuments,
   moveDocument,
   reorderDocuments,
+  toListItem,
   updateDocument,
+  type DocumentFull,
   type DocumentListItem,
 } from '../lib/api';
 
@@ -45,7 +47,14 @@ interface DocumentsContextValue {
   /** Reordena los documentos de una carpeta. */
   reorder: (categoryId: string | null, orderedIds: string[]) => Promise<void>;
   /** Refleja en el listado un cambio ya guardado en la API (p. ej. el titulo). */
-  patchLocal: (doc: DocumentListItem) => void;
+  patchLocal: (doc: DocumentFull) => void;
+  /**
+   * Documento abierto ahora mismo, o null. Lo publica `DocumentPage` al cargarlo
+   * porque las migas de pan del header necesitan su titulo y su carpeta, y el
+   * documento puede haberse abierto por URL directa (sin pasar por el listado).
+   */
+  current: DocumentListItem | null;
+  setCurrent: (doc: DocumentListItem | null) => void;
 }
 
 const DocumentsContext = createContext<DocumentsContextValue | undefined>(undefined);
@@ -53,6 +62,7 @@ const DocumentsContext = createContext<DocumentsContextValue | undefined>(undefi
 export function DocumentsProvider({ children }: { children: ReactNode }) {
   const [byCategory, setByCategory] = useState<Record<string, DocumentListItem[]>>({});
   const [loadingKeys, setLoadingKeys] = useState<Set<string>>(new Set());
+  const [current, setCurrent] = useState<DocumentListItem | null>(null);
   // Peticiones en vuelo, para no lanzar dos veces el mismo listado.
   const inFlight = useRef<Set<string>>(new Set());
 
@@ -96,7 +106,7 @@ export function DocumentsProvider({ children }: { children: ReactNode }) {
   );
 
   const create = useCallback(async (title: string, categoryId: string | null) => {
-    const doc = await createDocument({ title, categoryId });
+    const doc = toListItem(await createDocument({ title, categoryId }));
     const key = keyOf(categoryId);
     setByCategory((prev) =>
       // Si la carpeta aun no se habia cargado, la inicializamos con el documento
@@ -118,11 +128,12 @@ export function DocumentsProvider({ children }: { children: ReactNode }) {
       }
       return { ...prev, [key]: list.map((d) => (d.id === id ? { ...d, title: updated.title } : d)) };
     });
+    setCurrent((prev) => (prev?.id === id ? { ...prev, title: updated.title } : prev));
   }, []);
 
   const move = useCallback(
     async (id: string, fromCategoryId: string | null, toCategoryId: string | null) => {
-      const moved = await moveDocument(id, toCategoryId);
+      const moved = toListItem(await moveDocument(id, toCategoryId));
       const fromKey = keyOf(fromCategoryId);
       const toKey = keyOf(toCategoryId);
       setByCategory((prev) => {
@@ -134,10 +145,12 @@ export function DocumentsProvider({ children }: { children: ReactNode }) {
         // Entra en el de destino solo si ya estaba cargado; si no, se traera
         // al expandir esa carpeta.
         if (next[toKey]) {
-          next[toKey] = [...next[toKey], { ...moved }];
+          next[toKey] = [...next[toKey], moved];
         }
         return next;
       });
+      // Si es el documento abierto, sus migas de pan cambian de carpeta.
+      setCurrent((prev) => (prev?.id === id ? moved : prev));
     },
     [],
   );
@@ -152,6 +165,7 @@ export function DocumentsProvider({ children }: { children: ReactNode }) {
       }
       return { ...prev, [key]: list.filter((d) => d.id !== id) };
     });
+    setCurrent((prev) => (prev?.id === id ? null : prev));
   }, []);
 
   const reorder = useCallback(async (categoryId: string | null, orderedIds: string[]) => {
@@ -169,15 +183,17 @@ export function DocumentsProvider({ children }: { children: ReactNode }) {
     await reorderDocuments(categoryId, orderedIds);
   }, []);
 
-  const patchLocal = useCallback((doc: DocumentListItem) => {
-    const key = keyOf(doc.categoryId);
+  const patchLocal = useCallback((doc: DocumentFull) => {
+    const item = toListItem(doc);
+    const key = keyOf(item.categoryId);
     setByCategory((prev) => {
       const list = prev[key];
       if (!list) {
         return prev;
       }
-      return { ...prev, [key]: list.map((d) => (d.id === doc.id ? { ...d, ...doc } : d)) };
+      return { ...prev, [key]: list.map((d) => (d.id === item.id ? { ...d, ...item } : d)) };
     });
+    setCurrent((prev) => (prev?.id === item.id ? item : prev));
   }, []);
 
   const value = useMemo<DocumentsContextValue>(
@@ -192,8 +208,22 @@ export function DocumentsProvider({ children }: { children: ReactNode }) {
       remove,
       reorder,
       patchLocal,
+      current,
+      setCurrent,
     }),
-    [byCategory, loadingKeys, loadFor, refresh, create, rename, move, remove, reorder, patchLocal],
+    [
+      byCategory,
+      loadingKeys,
+      loadFor,
+      refresh,
+      create,
+      rename,
+      move,
+      remove,
+      reorder,
+      patchLocal,
+      current,
+    ],
   );
 
   return <DocumentsContext.Provider value={value}>{children}</DocumentsContext.Provider>;

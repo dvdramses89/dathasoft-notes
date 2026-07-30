@@ -1,5 +1,7 @@
+import { Button, Group, Modal, Stack } from '@mantine/core';
 import { useState } from 'react';
 import type { CategoryNode } from '../lib/api';
+import { DestinationPicker, type Destination } from './DestinationPicker';
 
 interface MoveDocumentModalProps {
   /** Título del documento que se está moviendo. */
@@ -23,71 +25,34 @@ export function MoveDocumentModal({
   onCancel,
   onConfirm,
 }: MoveDocumentModalProps) {
-  // null = nada elegido todavía; { categoryId } = destino elegido.
-  const [dest, setDest] = useState<{ categoryId: string | null } | null>(null);
-
-  function renderNodes(nodes: CategoryNode[], depth: number) {
-    return nodes.map((node) => {
-      const isCurrent = node.id === currentCategoryId;
-      const selected = dest?.categoryId === node.id;
-      return (
-        <div key={node.id}>
-          <button
-            type="button"
-            className={`dest-item${selected ? ' dest-item--selected' : ''}`}
-            style={{ paddingLeft: `${depth * 14 + 10}px` }}
-            disabled={isCurrent}
-            title={isCurrent ? 'El documento ya está en esta carpeta' : undefined}
-            onClick={() => setDest({ categoryId: node.id })}
-          >
-            {node.name}
-            {isCurrent && <small> (actual)</small>}
-          </button>
-          {node.children.length > 0 && renderNodes(node.children, depth + 1)}
-        </div>
-      );
-    });
-  }
-
-  const rootIsCurrent = currentCategoryId === null;
+  const [dest, setDest] = useState<Destination>(undefined);
 
   return (
-    <div className="modal-overlay" onClick={onCancel}>
-      <div className="modal modal--wide" onClick={(e) => e.stopPropagation()}>
-        <h3 className="modal-title">Mover «{title}» a:</h3>
+    <Modal opened onClose={onCancel} title={`Mover «${title}» a…`} size="md">
+      <Stack gap="md">
+        <DestinationPicker
+          tree={tree}
+          value={dest}
+          onChange={setDest}
+          currentId={currentCategoryId}
+        />
 
-        <div className="dest-tree">
-          <button
-            type="button"
-            className={`dest-item${dest?.categoryId === null ? ' dest-item--selected' : ''}`}
-            disabled={rootIsCurrent}
-            title={rootIsCurrent ? 'El documento ya está en la raíz' : undefined}
-            onClick={() => setDest({ categoryId: null })}
-          >
-            Raíz (nivel superior)
-            {rootIsCurrent && <small> (actual)</small>}
-          </button>
-          {renderNodes(tree, 0)}
-        </div>
-
-        <div className="modal-actions">
-          <button className="btn btn--ghost" type="button" onClick={onCancel}>
+        <Group justify="flex-end" gap="sm">
+          <Button variant="default" onClick={onCancel}>
             Cancelar
-          </button>
-          <button
-            className="btn"
-            type="button"
-            disabled={dest === null}
+          </Button>
+          <Button
+            disabled={dest === undefined}
             onClick={() => {
-              if (dest !== null) {
-                onConfirm(dest.categoryId);
+              if (dest !== undefined) {
+                onConfirm(dest);
               }
             }}
           >
             Mover
-          </button>
-        </div>
-      </div>
-    </div>
+          </Button>
+        </Group>
+      </Stack>
+    </Modal>
   );
 }

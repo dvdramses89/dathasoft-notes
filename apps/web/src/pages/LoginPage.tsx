@@ -1,3 +1,16 @@
+import {
+  Alert,
+  Anchor,
+  Button,
+  Center,
+  Paper,
+  PasswordInput,
+  Stack,
+  Text,
+  TextInput,
+  Title,
+} from '@mantine/core';
+import { IconAlertCircle } from '@tabler/icons-react';
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
@@ -26,42 +39,62 @@ export function LoginPage() {
   }
 
   return (
-    <main className="card">
-      <h1 className="brand">DTNotes</h1>
-      <p className="subtitle">Inicia sesión en tu cuenta</p>
+    <Center mih="100dvh" p="md">
+      <Paper withBorder radius="lg" p="xl" w="100%" maw={420} shadow="sm">
+        <Stack gap="lg">
+          <Stack gap={4} align="center">
+            <Title order={1} fz="2rem" c="brand">
+              DTNotes
+            </Title>
+            <Text size="sm" c="dimmed">
+              Inicia sesión en tu cuenta
+            </Text>
+          </Stack>
 
-      <form className="form" onSubmit={onSubmit}>
-        <label className="field">
-          <span>Email</span>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            autoComplete="email"
-          />
-        </label>
-        <label className="field">
-          <span>Contraseña</span>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            autoComplete="current-password"
-          />
-        </label>
+          <form onSubmit={onSubmit}>
+            <Stack gap="md">
+              <TextInput
+                label="Email"
+                type="email"
+                required
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.currentTarget.value)}
+              />
+              <PasswordInput
+                label="Contraseña"
+                required
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.currentTarget.value)}
+              />
 
-        {error && <p className="form-error">{error}</p>}
+              {error && (
+                <Alert
+                  variant="light"
+                  color="red"
+                  icon={<IconAlertCircle size={16} />}
+                  radius="md"
+                  p="xs"
+                >
+                  <Text size="sm">{error}</Text>
+                </Alert>
+              )}
 
-        <button className="btn" type="submit" disabled={submitting}>
-          {submitting ? 'Entrando…' : 'Entrar'}
-        </button>
-      </form>
+              <Button type="submit" loading={submitting} fullWidth>
+                Entrar
+              </Button>
+            </Stack>
+          </form>
 
-      <p className="switch">
-        ¿No tienes cuenta? <Link to="/register">Regístrate</Link>
-      </p>
-    </main>
+          <Text size="sm" c="dimmed" ta="center">
+            ¿No tienes cuenta?{' '}
+            <Anchor component={Link} to="/register" size="sm">
+              Regístrate
+            </Anchor>
+          </Text>
+        </Stack>
+      </Paper>
+    </Center>
   );
 }

@@ -1,9 +1,11 @@
 import type { Block, PartialBlock } from '@blocknote/core';
+import { Badge, Box, Center, Group, Loader, ScrollArea, Stack, Text, Title } from '@mantine/core';
+import { IconAlertTriangle } from '@tabler/icons-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { DocumentEditor } from '../documents/DocumentEditor';
 import { useDocuments } from '../documents/DocumentsContext';
-import { getDocument, updateDocument, type DocumentFull } from '../lib/api';
+import { getDocument, toListItem, updateDocument, type DocumentFull } from '../lib/api';
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 
@@ -11,9 +13,19 @@ function SaveIndicator({ state }: { state: SaveState }) {
   if (state === 'idle') {
     return null;
   }
-  const text =
-    state === 'saving' ? 'Guardando…' : state === 'saved' ? 'Guardado' : 'Error al guardar';
-  return <span className={`save-indicator save-indicator--${state}`}>{text}</span>;
+  const props =
+    state === 'saving'
+      ? { color: 'gray', text: 'Guardando…' }
+      : state === 'saved'
+        ? { color: 'teal', text: 'Guardado' }
+        : { color: 'red', text: 'Error al guardar' };
+  // `tt="none"` porque el Badge de Mantine pone el texto en mayusculas por
+  // defecto, y un aviso de autoguardado no debe gritar.
+  return (
+    <Badge variant="light" color={props.color} size="sm" radius="sm" tt="none" fw={500}>
+      {props.text}
+    </Badge>
+  );
 }
 
 /** El contenido guardado es un array de bloques de BlockNote (o algo vacío). */
@@ -25,7 +37,7 @@ function asBlocks(contentJson: unknown): PartialBlock[] | undefined {
 
 export function DocumentPage() {
   const { id } = useParams();
-  const { patchLocal, byCategory } = useDocuments();
+  const { patchLocal, byCategory, setCurrent } = useDocuments();
   const [doc, setDoc] = useState<DocumentFull | null>(null);
   const [title, setTitle] = useState('');
   const [loading, setLoading] = useState(true);
@@ -50,12 +62,15 @@ export function DocumentPage() {
         if (!cancelled) {
           setDoc(data);
           setTitle(data.title);
+          // Publica el documento abierto para las migas de pan del header.
+          setCurrent(toListItem(data));
         }
       })
       .catch(() => {
         if (!cancelled) {
           setDoc(null);
           setNotFound(true);
+          setCurrent(null);
         }
       })
       .finally(() => {
@@ -66,7 +81,12 @@ export function DocumentPage() {
     return () => {
       cancelled = true;
     };
-  }, [id]);
+  }, [id, setCurrent]);
+
+  // Al salir de la página, las migas dejan de mostrar este documento.
+  useEffect(() => {
+    return () => setCurrent(null);
+  }, [setCurrent]);
 
   // Si el documento abierto se renombra desde el sidebar, el título de la
   // página lo sigue (salvo mientras se está editando aquí).
@@ -133,54 +153,65 @@ export function DocumentPage() {
 
   if (loading) {
     return (
-      <div className="content-inner">
-        <p className="content-subtitle">Cargando documento…</p>
-      </div>
+      <Center h="100%">
+        <Group gap="xs">
+          <Loader size="sm" />
+          <Text size="sm" c="dimmed">
+            Cargando documento…
+          </Text>
+        </Group>
+      </Center>
     );
   }
 
   if (notFound || !doc) {
     return (
-      <div className="content-inner">
-        <div className="content-empty">
-          <h1 className="content-title">Documento no encontrado</h1>
-          <p className="content-subtitle">
+      <Center h="100%">
+        <Stack align="center" gap="xs">
+          <IconAlertTriangle size={34} stroke={1.3} opacity={0.4} />
+          <Title order={3}>Documento no encontrado</Title>
+          <Text size="sm" c="dimmed" ta="center" maw={420}>
             Puede que se haya movido a la papelera o que el enlace no sea válido.
-          </p>
-        </div>
-      </div>
+          </Text>
+        </Stack>
+      </Center>
     );
   }
 
   return (
-    <div className="content-inner">
-      <div className="doc-header">
-        <input
-          ref={titleRef}
-          className="doc-title-input"
-          value={title}
-          placeholder="Documento sin título"
-          onChange={(e) => setTitle(e.target.value)}
-          onBlur={() => void saveTitle()}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.currentTarget.blur();
-            } else if (e.key === 'Escape') {
-              setTitle(doc.title);
-              e.currentTarget.blur();
-            }
-          }}
-        />
-        <SaveIndicator state={saveState} />
-      </div>
+    <ScrollArea h="100%" type="auto">
+      {/* La hoja: ancho de lectura y centrada, como una pagina. */}
+      <Box className="doc-surface" maw={860} mx="auto" p={{ base: 'md', sm: 'xl' }}>
+        <Group justify="space-between" align="center" wrap="nowrap" gap="sm" mb="md">
+          <input
+            ref={titleRef}
+            className="doc-title-input"
+            value={title}
+            placeholder="Documento sin título"
+            onChange={(e) => setTitle(e.target.value)}
+            onBlur={() => void saveTitle()}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.currentTarget.blur();
+              } else if (e.key === 'Escape') {
+                setTitle(doc.title);
+                e.currentTarget.blur();
+              }
+            }}
+          />
+          <Box style={{ flex: 'none' }}>
+            <SaveIndicator state={saveState} />
+          </Box>
+        </Group>
 
-      {/* La key remonta el editor al cambiar de documento: el contenido inicial
-          de BlockNote se fija al crearlo y no es reactivo. */}
-      <DocumentEditor
-        key={doc.id}
-        initialContent={asBlocks(doc.contentJson)}
-        onSave={saveContent}
-      />
-    </div>
+        {/* La key remonta el editor al cambiar de documento: el contenido inicial
+            de BlockNote se fija al crearlo y no es reactivo. */}
+        <DocumentEditor
+          key={doc.id}
+          initialContent={asBlocks(doc.contentJson)}
+          onSave={saveContent}
+        />
+      </Box>
+    </ScrollArea>
   );
 }

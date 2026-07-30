@@ -1,9 +1,38 @@
-import { useEffect, useState, type DragEvent, type KeyboardEvent, type MouseEvent } from 'react';
+import {
+  ActionIcon,
+  Box,
+  Button,
+  Divider,
+  Group,
+  Loader,
+  Menu,
+  Modal,
+  ScrollArea,
+  Stack,
+  Text,
+  TextInput,
+  Tooltip,
+} from '@mantine/core';
+import {
+  IconChevronRight,
+  IconDots,
+  IconFilePlus,
+  IconFileText,
+  IconFolderPlus,
+  IconFolders,
+  IconHome,
+  IconPalette,
+  IconPencil,
+  IconPlus,
+  IconTrash,
+} from '@tabler/icons-react';
+import { useEffect, useState, type DragEvent, type ReactNode } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useAuth } from '../auth/AuthContext';
 import { useCategories } from '../categories/CategoriesContext';
+import { FolderIcon } from '../categories/folderIcons';
 import { useDocuments } from '../documents/DocumentsContext';
 import type { CategoryNode, DocumentListItem, TreeMode } from '../lib/api';
+import { FolderFormModal, type FolderLook } from './FolderFormModal';
 import { MoveDocumentModal } from './MoveDocumentModal';
 import { MoveModal } from './MoveModal';
 
@@ -12,6 +41,11 @@ interface DropIndicator {
   id: string;
   pos: DropPos;
 }
+
+/** Estado del dialogo de carpeta: crear dentro de `parentId`, o editar `node`. */
+type FolderForm =
+  | { mode: 'create'; parentId: string | null; parentName: string | null }
+  | { mode: 'edit'; node: CategoryNode };
 
 // IDs (en orden) de las carpetas hermanas de un nivel dado.
 function siblingIdsOf(tree: CategoryNode[], parentId: string | null): string[] {
@@ -29,75 +63,6 @@ function siblingIdsOf(tree: CategoryNode[], parentId: string | null): string[] {
   return [];
 }
 
-function FolderIcon() {
-  return (
-    <svg className="folder-icon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
-      <path
-        fill="currentColor"
-        d="M10 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-8l-2-2Z"
-      />
-    </svg>
-  );
-}
-
-function DocIcon() {
-  return (
-    <svg className="doc-icon" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
-      <path
-        fill="currentColor"
-        d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6Zm0 2.5L17.5 8H14V4.5ZM8 13h8v1.5H8V13Zm0 3.5h8V18H8v-1.5Z"
-      />
-    </svg>
-  );
-}
-
-function Chevron({ open }: { open: boolean }) {
-  return (
-    <svg
-      className={`chevron${open ? ' chevron--open' : ''}`}
-      viewBox="0 0 24 24"
-      width="14"
-      height="14"
-      aria-hidden="true"
-    >
-      <path fill="currentColor" d="M9 6l6 6-6 6V6Z" />
-    </svg>
-  );
-}
-
-function PencilIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
-      <path
-        fill="currentColor"
-        d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25ZM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83Z"
-      />
-    </svg>
-  );
-}
-
-function TrashIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
-      <path
-        fill="currentColor"
-        d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6v12ZM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4Z"
-      />
-    </svg>
-  );
-}
-
-function MoveIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
-      <path
-        fill="currentColor"
-        d="M20 6h-8l-2-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2Zm-8 11v-3H8v-2h4V9l4 4-4 4Z"
-      />
-    </svg>
-  );
-}
-
 function RenameInput({
   initial,
   onSubmit,
@@ -109,12 +74,14 @@ function RenameInput({
 }) {
   const [value, setValue] = useState(initial);
   return (
-    <input
-      className="rename-input"
+    <TextInput
+      size="xs"
+      variant="filled"
       autoFocus
+      style={{ flex: 1 }}
       value={value}
       onClick={(e) => e.stopPropagation()}
-      onChange={(e) => setValue(e.target.value)}
+      onChange={(e) => setValue(e.currentTarget.value)}
       onKeyDown={(e) => {
         if (e.key === 'Enter') {
           onSubmit(value.trim());
@@ -124,6 +91,28 @@ function RenameInput({
       }}
       onBlur={() => onSubmit(value.trim())}
     />
+  );
+}
+
+/** Menu de tres puntos de una fila del arbol. */
+function RowMenu({ children }: { children: ReactNode }) {
+  return (
+    <Menu position="bottom-start" width={210} shadow="md" withinPortal>
+      <Menu.Target>
+        <ActionIcon
+          component="div"
+          role="button"
+          variant="subtle"
+          color="gray"
+          size="sm"
+          aria-label="Acciones"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <IconDots size={15} />
+        </ActionIcon>
+      </Menu.Target>
+      <Menu.Dropdown onClick={(e) => e.stopPropagation()}>{children}</Menu.Dropdown>
+    </Menu>
   );
 }
 
@@ -154,12 +143,11 @@ function DocItem(props: DocItemProps) {
   const dropAfter = dropIndicator?.id === doc.id && dropIndicator.pos === 'after';
 
   const classes = [
-    'tree-item',
-    'tree-item--doc',
-    active ? 'tree-item--active' : '',
-    isDragging ? 'tree-item--dragging' : '',
-    dropBefore ? 'tree-item--drop-before' : '',
-    dropAfter ? 'tree-item--drop-after' : '',
+    'tree-row',
+    active ? 'tree-row--active' : '',
+    isDragging ? 'tree-row--dragging' : '',
+    dropBefore ? 'tree-row--drop-before' : '',
+    dropAfter ? 'tree-row--drop-after' : '',
   ]
     .filter(Boolean)
     .join(' ');
@@ -187,7 +175,7 @@ function DocItem(props: DocItemProps) {
         onDragEnd={props.onDragEnd}
       >
         <span className="tree-chevron" />
-        <DocIcon />
+        <IconFileText size={15} stroke={1.7} style={{ flex: 'none', opacity: 0.75 }} />
 
         {editing ? (
           <RenameInput
@@ -196,45 +184,33 @@ function DocItem(props: DocItemProps) {
             onCancel={props.onCancelRename}
           />
         ) : (
-          <span className="tree-name">{doc.title}</span>
-        )}
-
-        {!editing && (
-          <span className="tree-actions">
-            <button
-              className="tree-action"
-              type="button"
-              title="Renombrar"
-              onClick={(e) => {
-                e.stopPropagation();
-                props.onStartRename(doc.id);
-              }}
-            >
-              <PencilIcon />
-            </button>
-            <button
-              className="tree-action"
-              type="button"
-              title="Mover a otra carpeta"
-              onClick={(e) => {
-                e.stopPropagation();
-                props.onRequestMove(doc);
-              }}
-            >
-              <MoveIcon />
-            </button>
-            <button
-              className="tree-action"
-              type="button"
-              title="Enviar a la papelera"
-              onClick={(e) => {
-                e.stopPropagation();
-                props.onRequestDelete(doc);
-              }}
-            >
-              <TrashIcon />
-            </button>
-          </span>
+          <>
+            <span className="tree-row-name">{doc.title}</span>
+            <span className="tree-row-actions">
+              <RowMenu>
+                <Menu.Item
+                  leftSection={<IconPencil size={15} />}
+                  onClick={() => props.onStartRename(doc.id)}
+                >
+                  Renombrar
+                </Menu.Item>
+                <Menu.Item
+                  leftSection={<IconFolders size={15} />}
+                  onClick={() => props.onRequestMove(doc)}
+                >
+                  Mover a…
+                </Menu.Item>
+                <Menu.Divider />
+                <Menu.Item
+                  color="red"
+                  leftSection={<IconTrash size={15} />}
+                  onClick={() => props.onRequestDelete(doc)}
+                >
+                  Enviar a la papelera
+                </Menu.Item>
+              </RowMenu>
+            </span>
+          </>
         )}
       </div>
     </li>
@@ -261,6 +237,9 @@ interface TreeItemProps {
   onCancelRename: () => void;
   onRequestMove: (node: CategoryNode) => void;
   onRequestDelete: (node: CategoryNode) => void;
+  onRequestRestyle: (node: CategoryNode) => void;
+  onRequestSubfolder: (node: CategoryNode) => void;
+  onRequestNewDoc: (node: CategoryNode) => void;
   dragId: string | null;
   dropIndicator: DropIndicator | null;
   onDragStart: (node: CategoryNode) => void;
@@ -285,11 +264,11 @@ function TreeItem(props: TreeItemProps) {
   const dropAfter = dropIndicator?.id === node.id && dropIndicator.pos === 'after';
 
   const classes = [
-    'tree-item',
-    isSelected ? 'tree-item--selected' : '',
-    isDragging ? 'tree-item--dragging' : '',
-    dropBefore ? 'tree-item--drop-before' : '',
-    dropAfter ? 'tree-item--drop-after' : '',
+    'tree-row',
+    isSelected ? 'tree-row--selected' : '',
+    isDragging ? 'tree-row--dragging' : '',
+    dropBefore ? 'tree-row--drop-before' : '',
+    dropAfter ? 'tree-row--drop-after' : '',
   ]
     .filter(Boolean)
     .join(' ');
@@ -314,17 +293,17 @@ function TreeItem(props: TreeItemProps) {
         onDragEnd={props.onDragEnd}
       >
         <span
-          className="tree-chevron"
-          onClick={(e: MouseEvent) => {
+          className={`tree-chevron${isOpen ? ' tree-chevron--open' : ''}`}
+          onClick={(e) => {
             e.stopPropagation();
             if (hasChildren) {
               props.onToggle(node.id);
             }
           }}
         >
-          {hasChildren ? <Chevron open={isOpen} /> : null}
+          {hasChildren ? <IconChevronRight size={13} stroke={2.2} /> : null}
         </span>
-        <FolderIcon />
+        <FolderIcon icon={node.icon} color={node.color} size={16} />
 
         {isEditing ? (
           <RenameInput
@@ -333,50 +312,63 @@ function TreeItem(props: TreeItemProps) {
             onCancel={props.onCancelRename}
           />
         ) : (
-          <span className="tree-name">{node.name}</span>
-        )}
-
-        {!isEditing && (
-          <span className="tree-actions">
-            <button
-              className="tree-action"
-              type="button"
-              title="Renombrar"
-              onClick={(e) => {
-                e.stopPropagation();
-                props.onStartRename(node.id);
-              }}
-            >
-              <PencilIcon />
-            </button>
-            <button
-              className="tree-action"
-              type="button"
-              title="Mover"
-              onClick={(e) => {
-                e.stopPropagation();
-                props.onRequestMove(node);
-              }}
-            >
-              <MoveIcon />
-            </button>
-            <button
-              className="tree-action"
-              type="button"
-              title="Eliminar"
-              onClick={(e) => {
-                e.stopPropagation();
-                props.onRequestDelete(node);
-              }}
-            >
-              <TrashIcon />
-            </button>
-          </span>
+          <>
+            <span className="tree-row-name">{node.name}</span>
+            {/* El contador solo cuando esta cerrada: al abrirla ya se ven. */}
+            {!isOpen && node.documentCount > 0 && (
+              <Text component="span" size="xs" c="dimmed" style={{ flex: 'none' }}>
+                {node.documentCount}
+              </Text>
+            )}
+            <span className="tree-row-actions">
+              <RowMenu>
+                <Menu.Item
+                  leftSection={<IconFilePlus size={15} />}
+                  onClick={() => props.onRequestNewDoc(node)}
+                >
+                  Nuevo documento
+                </Menu.Item>
+                <Menu.Item
+                  leftSection={<IconFolderPlus size={15} />}
+                  onClick={() => props.onRequestSubfolder(node)}
+                >
+                  Nueva subcarpeta
+                </Menu.Item>
+                <Menu.Divider />
+                <Menu.Item
+                  leftSection={<IconPencil size={15} />}
+                  onClick={() => props.onStartRename(node.id)}
+                >
+                  Renombrar
+                </Menu.Item>
+                <Menu.Item
+                  leftSection={<IconPalette size={15} />}
+                  onClick={() => props.onRequestRestyle(node)}
+                >
+                  Icono y color…
+                </Menu.Item>
+                <Menu.Item
+                  leftSection={<IconFolders size={15} />}
+                  onClick={() => props.onRequestMove(node)}
+                >
+                  Mover a…
+                </Menu.Item>
+                <Menu.Divider />
+                <Menu.Item
+                  color="red"
+                  leftSection={<IconTrash size={15} />}
+                  onClick={() => props.onRequestDelete(node)}
+                >
+                  Eliminar
+                </Menu.Item>
+              </RowMenu>
+            </span>
+          </>
         )}
       </div>
 
       {hasChildren && isOpen && (
-        <ul className="tree-children">
+        <ul className="tree-list">
           {node.children.map((child) => (
             <TreeItem key={child.id} {...props} node={child} depth={depth + 1} />
           ))}
@@ -392,8 +384,13 @@ function TreeItem(props: TreeItemProps) {
             />
           ))}
           {docs === undefined && loadingDocs && (
-            <li className="tree-hint" style={{ paddingLeft: `${(depth + 1) * 14 + 8}px` }}>
-              Cargando…
+            <li style={{ paddingLeft: `${(depth + 1) * 14 + 26}px` }}>
+              <Group gap={6} py={4}>
+                <Loader size={12} />
+                <Text size="xs" c="dimmed">
+                  Cargando…
+                </Text>
+              </Group>
             </li>
           )}
         </ul>
@@ -413,11 +410,11 @@ export function Sidebar() {
     reload: reloadTree,
     create,
     rename,
+    restyle,
     remove,
     move,
     reorder,
   } = useCategories();
-  const { user, logout } = useAuth();
   const {
     byCategory,
     loadingKeys,
@@ -431,8 +428,7 @@ export function Sidebar() {
   const navigate = useNavigate();
   const { id: openDocId } = useParams();
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
-  const [adding, setAdding] = useState(false);
-  const [newName, setNewName] = useState('');
+  const [folderForm, setFolderForm] = useState<FolderForm | null>(null);
   const [busy, setBusy] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<CategoryNode | null>(null);
@@ -491,16 +487,16 @@ export function Sidebar() {
     }
   }
 
-  /** Crea un documento en la carpeta seleccionada (o en la raíz) y lo abre. */
-  async function newDocument() {
+  /** Crea un documento en una carpeta (o en la raíz) y lo abre. */
+  async function newDocument(categoryId: string | null) {
     setBusy(true);
     try {
-      const doc = await createDoc('Documento sin título', selectedId);
-      if (selectedId) {
+      const doc = await createDoc('Documento sin título', categoryId);
+      if (categoryId) {
         // La carpeta ya tiene contenido: hay que traer su listado si no estaba
         // cargado y refrescar el árbol para que aparezca su chevron.
-        await loadFor(selectedId);
-        setExpanded((prev) => new Set(prev).add(selectedId));
+        await loadFor(categoryId);
+        setExpanded((prev) => new Set(prev).add(categoryId));
       }
       await reloadTree();
       // Queda marcado solo el documento nuevo, no la carpeta donde se creó.
@@ -510,19 +506,26 @@ export function Sidebar() {
     }
   }
 
-  async function submitNew() {
-    const name = newName.trim();
-    if (!name) {
+  /** Confirma el diálogo de carpeta, tanto al crear como al editar el aspecto. */
+  async function submitFolderForm(look: FolderLook) {
+    if (!folderForm) {
       return;
     }
     setBusy(true);
     try {
-      await create(name, selectedId);
-      if (selectedId) {
-        setExpanded((prev) => new Set(prev).add(selectedId));
+      if (folderForm.mode === 'create') {
+        await create(look.name, folderForm.parentId, { color: look.color, icon: look.icon });
+        if (folderForm.parentId) {
+          setExpanded((prev) => new Set(prev).add(folderForm.parentId as string));
+        }
+      } else {
+        const { node } = folderForm;
+        if (look.name !== node.name) {
+          await rename(node.id, look.name);
+        }
+        await restyle(node.id, { color: look.color, icon: look.icon });
       }
-      setNewName('');
-      setAdding(false);
+      setFolderForm(null);
     } finally {
       setBusy(false);
     }
@@ -606,20 +609,6 @@ export function Sidebar() {
     clearDocDrag();
   }
 
-  /** Descarta la creación de carpeta en curso. */
-  function cancelNew() {
-    setAdding(false);
-    setNewName('');
-  }
-
-  function onKeyDown(e: KeyboardEvent<HTMLInputElement>) {
-    if (e.key === 'Enter') {
-      void submitNew();
-    } else if (e.key === 'Escape') {
-      cancelNew();
-    }
-  }
-
   function submitRename(id: string, name: string) {
     setEditingId(null);
     if (name) {
@@ -689,209 +678,213 @@ export function Sidebar() {
     onDragEnd: clearDocDrag,
   };
 
+  const isEmpty = tree.length === 0 && rootDocumentCount === 0;
+
   return (
-    <aside className="sidebar">
-      <div className="sidebar-top">
-        <span className="sidebar-title">Carpetas</span>
-        <span className="sidebar-top-actions">
-          <button
-            className="icon-btn"
-            type="button"
-            disabled={busy}
-            title={
-              selectedNode
-                ? `Nuevo documento en «${selectedNode.name}»`
-                : 'Nuevo documento en la raíz'
-            }
-            onClick={() => void newDocument()}
-          >
-            <DocIcon />
-          </button>
-          <button
-            className="icon-btn"
-            type="button"
-            title={
-              adding
-                ? 'Cancelar'
-                : selectedNode
-                  ? `Nueva subcarpeta en «${selectedNode.name}»`
-                  : 'Nueva carpeta'
-            }
-            onClick={() => (adding ? cancelNew() : setAdding(true))}
-          >
-            +
-          </button>
-        </span>
-      </div>
-
-      {adding && (
-        <div className="add-folder">
-          <div className="add-folder-hint">
-            En: <strong>{selectedNode ? selectedNode.name : 'Raíz'}</strong>
-          </div>
-          <input
-            className="add-folder-input"
-            autoFocus
-            placeholder="Nombre de la carpeta"
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            onKeyDown={onKeyDown}
-            disabled={busy}
-          />
-          <div className="add-folder-actions">
-            <button
-              className="btn btn--ghost btn--sm"
-              type="button"
-              onClick={cancelNew}
-              disabled={busy}
-            >
-              Cancelar
-            </button>
-            <button
-              className="btn btn--sm"
-              type="button"
-              onClick={() => void submitNew()}
-              disabled={busy || newName.trim() === ''}
-            >
-              Crear
-            </button>
-          </div>
-        </div>
-      )}
-
-      <nav
-        className="tree"
-        onClick={(e) => {
-          if (e.target === e.currentTarget) {
-            selectCategory(null);
-          }
-        }}
+    <Stack h="100%" gap={6}>
+      <Button
+        leftSection={<IconFilePlus size={16} />}
+        variant="light"
+        size="sm"
+        loading={busy}
+        onClick={() => void newDocument(selectedId)}
       >
-        {loading ? (
-          <p className="tree-empty">Cargando…</p>
-        ) : tree.length === 0 && rootDocumentCount === 0 ? (
-          <p className="tree-empty">Aún no hay nada. Crea una carpeta con «+» o un documento.</p>
-        ) : (
-          <ul className="tree-root">
-            {tree.map((node) => (
-              <TreeItem
-                key={node.id}
-                node={node}
-                depth={0}
-                selectedId={selectedId}
-                expanded={expanded}
-                editingId={editingId}
-                docsByCategory={byCategory}
-                loadingDocKeys={loadingKeys}
-                openDocId={openDocId ?? null}
-                onOpenDoc={openDoc}
-                docActions={docActions}
-                editingDocId={editingDocId}
-                onSelect={selectCategory}
-                onToggle={toggle}
-                onStartRename={setEditingId}
-                onSubmitRename={submitRename}
-                onCancelRename={() => setEditingId(null)}
-                onRequestMove={setMoveTarget}
-                onRequestDelete={setDeleteTarget}
-                dragId={dragId}
-                dropIndicator={dropIndicator}
-                onDragStart={handleDragStart}
-                onDragOver={handleDragOver}
-                onDrop={handleDrop}
-                onDragEnd={clearDrag}
-              />
-            ))}
-            {/* Documentos que viven en la raíz (fuera de cualquier carpeta) */}
-            {rootDocs.map((doc) => (
-              <DocItem
-                key={doc.id}
-                {...docActions}
-                doc={doc}
-                depth={0}
-                active={openDocId === doc.id}
-                editing={editingDocId === doc.id}
-                onOpen={openDoc}
-              />
-            ))}
-          </ul>
-        )}
-      </nav>
+        Nuevo documento
+      </Button>
 
-      <div className="sidebar-footer">
-        <div className="sidebar-user">
-          <div className="avatar">{user?.name?.charAt(0).toUpperCase() ?? '?'}</div>
-          <div className="sidebar-user-info">
-            <div className="sidebar-user-name">{user?.name}</div>
-            <div className="sidebar-user-email">{user?.email}</div>
-          </div>
-        </div>
-        <button className="icon-btn" type="button" title="Cerrar sesión" onClick={logout}>
-          ⎋
-        </button>
+      <div
+        className={`tree-row${selectedId === null && !openDocId ? ' tree-row--selected' : ''}`}
+        onClick={() => selectCategory(null)}
+      >
+        <span className="tree-chevron" />
+        <IconHome size={16} stroke={1.7} />
+        <span className="tree-row-name">Mi espacio</span>
       </div>
 
-      {deleteTarget && (
-        <div className="modal-overlay" onClick={() => setDeleteTarget(null)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h3 className="modal-title">Eliminar «{deleteTarget.name}»</h3>
-            {deleteTarget.children.length > 0 ? (
-              <>
-                <p className="modal-text">
-                  Esta carpeta contiene subcarpetas. ¿Qué quieres enviar a la papelera?
-                </p>
-                <div className="modal-actions modal-actions--stack">
-                  <button className="btn btn--ghost" type="button" onClick={() => confirmDelete('single')}>
-                    Solo esta carpeta
-                    <small>Las subcarpetas suben al nivel superior</small>
-                  </button>
-                  <button className="btn btn--danger" type="button" onClick={() => confirmDelete('subtree')}>
-                    Esta carpeta y todo su contenido
-                  </button>
-                  <button className="modal-cancel" type="button" onClick={() => setDeleteTarget(null)}>
-                    Cancelar
-                  </button>
-                </div>
-              </>
-            ) : (
-              <>
-                <p className="modal-text">¿Enviar esta carpeta a la papelera?</p>
-                <div className="modal-actions">
-                  <button className="btn btn--ghost" type="button" onClick={() => setDeleteTarget(null)}>
-                    Cancelar
-                  </button>
-                  <button className="btn btn--danger" type="button" onClick={() => confirmDelete('subtree')}>
-                    Eliminar
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
+      <Divider my={2} />
+
+      <Group justify="space-between" px={6} gap="xs">
+        <Text size="xs" fw={600} c="dimmed" tt="uppercase">
+          Carpetas
+        </Text>
+        <Tooltip
+          label={
+            selectedNode ? `Nueva subcarpeta en «${selectedNode.name}»` : 'Nueva carpeta'
+          }
+        >
+          <ActionIcon
+            variant="subtle"
+            color="gray"
+            size="sm"
+            aria-label="Nueva carpeta"
+            onClick={() =>
+              setFolderForm({
+                mode: 'create',
+                parentId: selectedId,
+                parentName: selectedNode?.name ?? null,
+              })
+            }
+          >
+            <IconPlus size={15} />
+          </ActionIcon>
+        </Tooltip>
+      </Group>
+
+      <ScrollArea className="tree-scroll" type="hover" scrollbarSize={8}>
+        <Box
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              selectCategory(null);
+            }
+          }}
+          mih="100%"
+        >
+          {loading ? (
+            <Group gap={8} p="xs">
+              <Loader size={14} />
+              <Text size="xs" c="dimmed">
+                Cargando…
+              </Text>
+            </Group>
+          ) : isEmpty ? (
+            <Text size="xs" c="dimmed" p="xs">
+              Aún no hay nada. Crea una carpeta con «+» o un documento.
+            </Text>
+          ) : (
+            <ul className="tree-list">
+              {tree.map((node) => (
+                <TreeItem
+                  key={node.id}
+                  node={node}
+                  depth={0}
+                  selectedId={selectedId}
+                  expanded={expanded}
+                  editingId={editingId}
+                  docsByCategory={byCategory}
+                  loadingDocKeys={loadingKeys}
+                  openDocId={openDocId ?? null}
+                  onOpenDoc={openDoc}
+                  docActions={docActions}
+                  editingDocId={editingDocId}
+                  onSelect={selectCategory}
+                  onToggle={toggle}
+                  onStartRename={setEditingId}
+                  onSubmitRename={submitRename}
+                  onCancelRename={() => setEditingId(null)}
+                  onRequestMove={setMoveTarget}
+                  onRequestDelete={setDeleteTarget}
+                  onRequestRestyle={(node) => setFolderForm({ mode: 'edit', node })}
+                  onRequestSubfolder={(node) =>
+                    setFolderForm({ mode: 'create', parentId: node.id, parentName: node.name })
+                  }
+                  onRequestNewDoc={(node) => void newDocument(node.id)}
+                  dragId={dragId}
+                  dropIndicator={dropIndicator}
+                  onDragStart={handleDragStart}
+                  onDragOver={handleDragOver}
+                  onDrop={handleDrop}
+                  onDragEnd={clearDrag}
+                />
+              ))}
+              {/* Documentos que viven en la raíz (fuera de cualquier carpeta) */}
+              {rootDocs.map((doc) => (
+                <DocItem
+                  key={doc.id}
+                  {...docActions}
+                  doc={doc}
+                  depth={0}
+                  active={openDocId === doc.id}
+                  editing={editingDocId === doc.id}
+                  onOpen={openDoc}
+                />
+              ))}
+            </ul>
+          )}
+        </Box>
+      </ScrollArea>
+
+      {/* ---------------- Diálogos ---------------- */}
+
+      {folderForm && (
+        <FolderFormModal
+          opened
+          title={folderForm.mode === 'create' ? 'Crear nueva carpeta' : 'Icono y color'}
+          submitLabel={folderForm.mode === 'create' ? 'Crear' : 'Guardar'}
+          parentName={
+            folderForm.mode === 'create' ? (folderForm.parentName ?? 'Mi espacio') : undefined
+          }
+          initial={
+            folderForm.mode === 'edit'
+              ? {
+                  name: folderForm.node.name,
+                  icon: folderForm.node.icon ?? undefined,
+                  color: folderForm.node.color ?? undefined,
+                }
+              : undefined
+          }
+          busy={busy}
+          onClose={() => setFolderForm(null)}
+          onSubmit={(look) => void submitFolderForm(look)}
+        />
       )}
 
-      {deleteDocTarget && (
-        <div className="modal-overlay" onClick={() => setDeleteDocTarget(null)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h3 className="modal-title">Eliminar «{deleteDocTarget.title}»</h3>
-            <p className="modal-text">
-              El documento se enviará a la papelera; podrás restaurarlo más adelante.
-            </p>
-            <div className="modal-actions">
-              <button
-                className="btn btn--ghost"
-                type="button"
-                onClick={() => setDeleteDocTarget(null)}
-              >
+      <Modal
+        opened={deleteTarget !== null}
+        onClose={() => setDeleteTarget(null)}
+        title={deleteTarget ? `Eliminar «${deleteTarget.name}»` : ''}
+      >
+        {deleteTarget && deleteTarget.children.length > 0 ? (
+          <Stack gap="sm">
+            <Text size="sm">
+              Esta carpeta contiene subcarpetas. ¿Qué quieres enviar a la papelera?
+            </Text>
+            <Button variant="default" onClick={() => confirmDelete('single')}>
+              Solo esta carpeta
+            </Button>
+            <Text size="xs" c="dimmed" mt={-8}>
+              Las subcarpetas suben al nivel superior
+            </Text>
+            <Button color="red" onClick={() => confirmDelete('subtree')}>
+              Esta carpeta y todo su contenido
+            </Button>
+            <Button variant="subtle" color="gray" onClick={() => setDeleteTarget(null)}>
+              Cancelar
+            </Button>
+          </Stack>
+        ) : (
+          <Stack gap="md">
+            <Text size="sm">¿Enviar esta carpeta a la papelera?</Text>
+            <Group justify="flex-end" gap="sm">
+              <Button variant="default" onClick={() => setDeleteTarget(null)}>
                 Cancelar
-              </button>
-              <button className="btn btn--danger" type="button" onClick={() => void confirmDocDelete()}>
+              </Button>
+              <Button color="red" onClick={() => confirmDelete('subtree')}>
                 Eliminar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+              </Button>
+            </Group>
+          </Stack>
+        )}
+      </Modal>
+
+      <Modal
+        opened={deleteDocTarget !== null}
+        onClose={() => setDeleteDocTarget(null)}
+        title={deleteDocTarget ? `Eliminar «${deleteDocTarget.title}»` : ''}
+      >
+        <Stack gap="md">
+          <Text size="sm">
+            El documento se enviará a la papelera; podrás restaurarlo más adelante.
+          </Text>
+          <Group justify="flex-end" gap="sm">
+            <Button variant="default" onClick={() => setDeleteDocTarget(null)}>
+              Cancelar
+            </Button>
+            <Button color="red" onClick={() => void confirmDocDelete()}>
+              Eliminar
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
 
       {moveDocTarget && (
         <MoveDocumentModal
@@ -914,6 +907,6 @@ export function Sidebar() {
           }}
         />
       )}
-    </aside>
+    </Stack>
   );
 }

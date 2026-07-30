@@ -1,10 +1,11 @@
 import '@blocknote/core/fonts/inter.css';
-import '@blocknote/ariakit/style.css';
+import '@blocknote/mantine/style.css';
 
-import { BlockNoteView } from '@blocknote/ariakit';
 import { BlockNoteSchema, defaultBlockSpecs, type Block, type PartialBlock } from '@blocknote/core';
 import { es } from '@blocknote/core/locales';
+import { BlockNoteView } from '@blocknote/mantine';
 import { useCreateBlockNote } from '@blocknote/react';
+import { useComputedColorScheme } from '@mantine/core';
 import { useCallback, useEffect, useRef } from 'react';
 import { codeBlockSpec } from './codeBlock';
 
@@ -66,6 +67,9 @@ interface DocumentEditorProps {
 }
 
 export function DocumentEditor({ initialContent, onSave }: DocumentEditorProps) {
+  // El editor sigue el tema de la app: la variante Mantine acepta el mismo
+  // valor que resuelve `useComputedColorScheme`, asi que el cambio es inmediato.
+  const colorScheme = useComputedColorScheme('light');
   const editor = useCreateBlockNote({
     schema,
     // Menus y etiquetas del editor en espanol.
@@ -109,7 +113,7 @@ export function DocumentEditor({ initialContent, onSave }: DocumentEditorProps) 
 
   return (
     <div className="doc-editor">
-      <BlockNoteView editor={editor} theme="dark" onChange={handleChange} onBlur={flush} />
+      <BlockNoteView editor={editor} theme={colorScheme} onChange={handleChange} onBlur={flush} />
     </div>
   );
 }

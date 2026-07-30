@@ -26,8 +26,24 @@ const listSelect = {
   updatedAt: true,
 } satisfies Prisma.DocumentSelect;
 
+/**
+ * Lo que se pide de verdad a la BD en un listado: lo anterior mas el texto
+ * plano, del que solo sale el extracto. `contentText` no se devuelve.
+ */
+const listQuerySelect = {
+  ...listSelect,
+  contentText: true,
+} satisfies Prisma.DocumentSelect;
+
+/** Caracteres de texto que viajan en un listado, para la vista previa. */
+const EXCERPT_LENGTH = 240;
+
 export type DocumentFull = Prisma.DocumentGetPayload<{ select: typeof fullSelect }>;
-export type DocumentListItem = Prisma.DocumentGetPayload<{ select: typeof listSelect }>;
+
+/** Documento de un listado: sin el contenido, con un extracto para la vista previa. */
+export type DocumentListItem = Prisma.DocumentGetPayload<{ select: typeof listSelect }> & {
+  excerpt: string;
+};
 
 @Injectable()
 export class DocumentsService {
@@ -61,15 +77,20 @@ export class DocumentsService {
     if (categoryId) {
       await this.assertCategoryOwned(ownerId, categoryId);
     }
-    return this.prisma.document.findMany({
+    const docs = await this.prisma.document.findMany({
       where: {
         ownerId,
         deletedAt: null,
         ...(categoryId !== undefined ? { categoryId } : {}),
       },
       orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
-      select: listSelect,
+      select: listQuerySelect,
     });
+    // `contentText` se descarta aqui: solo sale de la API como extracto.
+    return docs.map(({ contentText, ...doc }) => ({
+      ...doc,
+      excerpt: this.toExcerpt(contentText),
+    }));
   }
 
   async findOne(ownerId: string, id: string): Promise<DocumentFull> {
@@ -176,5 +197,20 @@ export class DocumentsService {
       select: { position: true },
     });
     return last ? last.position + 1 : 0;
+  }
+
+  /**
+   * Recorta el texto plano para la vista previa de los listados. Corta en el
+   * ultimo espacio para no partir una palabra por la mitad, y conserva los
+   * saltos de linea: la vista de tarjetas los respeta.
+   */
+  private toExcerpt(contentText: string): string {
+    const text = contentText.trim();
+    if (text.length <= EXCERPT_LENGTH) {
+      return text;
+    }
+    const cut = text.slice(0, EXCERPT_LENGTH);
+    const lastSpace = cut.lastIndexOf(' ');
+    return `${lastSpace > EXCERPT_LENGTH * 0.6 ? cut.slice(0, lastSpace) : cut}…`;
   }
 }

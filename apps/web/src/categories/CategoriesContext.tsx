@@ -31,6 +31,26 @@ function findNode(nodes: CategoryNode[], id: string): CategoryNode | null {
   return null;
 }
 
+/**
+ * Ruta desde la raiz hasta la carpeta indicada, ambas incluidas. Alimenta las
+ * migas de pan del header. Devuelve [] si el id no esta en el arbol.
+ */
+export function pathOf(nodes: CategoryNode[], id: string | null): CategoryNode[] {
+  if (!id) {
+    return [];
+  }
+  for (const node of nodes) {
+    if (node.id === id) {
+      return [node];
+    }
+    const sub = pathOf(node.children, id);
+    if (sub.length > 0) {
+      return [node, ...sub];
+    }
+  }
+  return [];
+}
+
 interface CategoriesContextValue {
   tree: CategoryNode[];
   /** Documentos que viven en la raíz (contador que llega con el árbol). */
@@ -40,8 +60,14 @@ interface CategoriesContextValue {
   selectedNode: CategoryNode | null;
   select: (id: string | null) => void;
   reload: () => Promise<void>;
-  create: (name: string, parentId: string | null) => Promise<void>;
+  create: (
+    name: string,
+    parentId: string | null,
+    look?: { color?: string; icon?: string },
+  ) => Promise<void>;
   rename: (id: string, name: string) => Promise<void>;
+  /** Cambia el aspecto de la carpeta (color e icono del catalogo). */
+  restyle: (id: string, look: { color?: string; icon?: string }) => Promise<void>;
   remove: (id: string, mode: TreeMode) => Promise<void>;
   move: (id: string, parentId: string | null, mode: TreeMode) => Promise<void>;
   reorder: (parentId: string | null, orderedIds: string[]) => Promise<void>;
@@ -70,8 +96,8 @@ export function CategoriesProvider({ children }: { children: ReactNode }) {
   const select = useCallback((id: string | null) => setSelectedId(id), []);
 
   const create = useCallback(
-    async (name: string, parentId: string | null) => {
-      await createCategory({ name, parentId });
+    async (name: string, parentId: string | null, look?: { color?: string; icon?: string }) => {
+      await createCategory({ name, parentId, ...look });
       await reload();
     },
     [reload],
@@ -80,6 +106,14 @@ export function CategoriesProvider({ children }: { children: ReactNode }) {
   const rename = useCallback(
     async (id: string, name: string) => {
       await updateCategory(id, { name });
+      await reload();
+    },
+    [reload],
+  );
+
+  const restyle = useCallback(
+    async (id: string, look: { color?: string; icon?: string }) => {
+      await updateCategory(id, look);
       await reload();
     },
     [reload],
@@ -126,6 +160,7 @@ export function CategoriesProvider({ children }: { children: ReactNode }) {
       reload,
       create,
       rename,
+      restyle,
       remove,
       move,
       reorder,
@@ -140,6 +175,7 @@ export function CategoriesProvider({ children }: { children: ReactNode }) {
       reload,
       create,
       rename,
+      restyle,
       remove,
       move,
       reorder,

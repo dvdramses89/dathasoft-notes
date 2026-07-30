@@ -3,7 +3,23 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
     <title>DTNotes</title>
+    <script>
+      // Aplica el tema guardado ANTES de que React monte, para que al recargar
+      // en modo oscuro no se vea un fogonazo blanco. Es lo mismo que hace el
+      // <ColorSchemeScript/> de Mantine, que en una SPA llega demasiado tarde.
+      (function () {
+        try {
+          var saved = localStorage.getItem('mantine-color-scheme-value');
+          if (saved === 'dark' || saved === 'light') {
+            document.documentElement.setAttribute('data-mantine-color-scheme', saved);
+          }
+        } catch (e) {
+          /* localStorage bloqueado: se queda el tema por defecto */
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

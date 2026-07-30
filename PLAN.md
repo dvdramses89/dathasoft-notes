@@ -78,6 +78,19 @@ Repositorio remoto (ya creado): `https://github.com/dvdramses89/dathasoft-notes.
 
 > Fase creada al documentar `.claude/rules/security.md`: recoge las reglas base de seguridad que ya están escritas como norma pero **aún no tienen respaldo en el código**. Quedan **fuera** de esta fase, por la decisión ya tomada en `TEMPLATE.md`: refresh token, logout con invalidación y roles. El token sigue en `localStorage` (pasarlo a cookie httpOnly obligaría a rehacer el cliente API y añadir CSRF).
 
+## Fase 4.6 — Rediseño visual (Mantine) ✅
+- [x] 4.6.1 **Sistema de componentes**: se adopta **Mantine 8** con la variante oficial `@blocknote/mantine` del editor (sustituye a `@blocknote/ariakit`) y `@tabler/icons-react`. Comprobado antes de elegir: las tres variantes de BlockNote (ariakit / mantine / shadcn) aceptan React 18, así que **no hizo falta subir a React 19** — el motivo por el que se descartó Mantine en la Fase 4 ya no aplicaba en la 0.52.1.
+- [x] 4.6.2 **Tema claro por defecto + oscuro con interruptor** (`theme.ts`, tokens del shell en `index.css` con los dos juegos de valores). El editor sigue el tema de la app vía `useComputedColorScheme`, así que el cambio es inmediato y hay un único origen de verdad. Un script en `index.html` aplica el tema guardado antes de que monte React, para que al recargar en oscuro no haya fogonazo blanco.
+- [x] 4.6.3 **Shell nuevo**: `AppShell` con cabecera (migas de pan calculadas desde el árbol + documento abierto, botón atrás, tema, menú de cuenta) y sidebar plegable por debajo de `sm` — antes no había layout móvil. `index.css` baja de 936 a 323 líneas.
+- [x] 4.6.4 **Vista de carpeta**: tres modos (tarjetas con vista previa / compacta / lista) con la elección recordada, contador de documentos, selección múltiple con mover y eliminar en lote, y estados vacíos con acciones. Para la vista previa, `GET /api/documents` devuelve un campo nuevo **`excerpt`** (240 caracteres, cortado por palabra); `contentText` sigue sin viajar en los listados.
+- [x] 4.6.5 **Icono y color de carpeta**: se estrenan las columnas `Category.icon` y `Category.color`, que existían en la BD desde la migración inicial pero no tenían forma de rellenarse. Catálogo de 20 iconos y 13 colores en un diálogo de crear/editar.
+- [x] 4.6.6 **Accesibilidad de los controles nuevos**: el conmutador de vistas, el botón «+» de crear y el burger eran solo iconos sin nombre accesible. Ahora los tres lo tienen (`role="img"` + `aria-label` en el conmutador, `aria-label` descriptivo en los otros dos).
+- **Validación**: `build:api` y `build:web` sin errores. Contrato comprobado por HTTP: el listado trae `excerpt` recortado por palabra y sin `contentText`, `GET /:id` sigue devolviendo el contenido completo, y una carpeta guarda y devuelve `icon`/`color`. Clases CSS definidas y usadas cuadran exactamente (sin CSS muerto). **Recorrido en navegador real con Playwright: 34/34 comprobaciones y 0 errores de consola**, con 19 capturas revisadas (registro, shell, modal de carpeta con icono/color, editor, bloque de código, tema claro y oscuro, las tres vistas, selección múltiple, menú de fila, móvil plegado y abierto, diálogo de borrado). Verificado además en la BD que el texto de un bloque de código llega a `contentText` y que `searchVector` lo encuentra con `to_tsquery`.
+
+> Pendiente detectado en la verificación, **no corregido** (cambia el routing y no estaba en el encargo): **la carpeta seleccionada no viaja en la URL**. Al recargar dentro de una carpeta se vuelve a «Mi espacio», porque `selectedId` es estado del Context. Ya era así antes del rediseño, pero ahora se nota más porque la vista de carpeta es la pantalla principal. Candidato a la Fase 10.
+
+> Trabajo pedido fuera del plan original, antes de seguir con la Fase 5. Adelanta parte de la 10.1 (repaso UX y estados vacíos). **No** se ha tocado nada de las fases 5-9: no hay buscador, ni favoritos, ni papelera, ni compartición — el sidebar no muestra secciones para funciones que aún no existen.
+
 ## Fase 5 — Tags + buscador global
 - [ ] 5.1 Modelos `Tag` + `DocumentTag` + API para asignar/quitar tags.
 - [ ] 5.2 Web: asignar tags a documentos y filtrar por tags.
@@ -110,8 +123,9 @@ Repositorio remoto (ya creado): `https://github.com/dvdramses89/dathasoft-notes.
 - **Validación**: compartir un documento y una carpeta con un colectivo y verlos desde otro usuario. *(Commit + push)*
 
 ## Fase 10 — Pulido final
-- [ ] 10.1 Repaso UX del sidebar estilo Craft, estados vacíos y manejo de errores.
+- [ ] 10.1 Repaso UX de lo que añadan las fases 5-9 sobre el shell de la 4.6, y manejo de errores. *(El rediseño visual, los estados vacíos y el layout móvil se hicieron en la Fase 4.6.)*
 - [ ] 10.2 Repaso de autorización (owner / colectivo) y validaciones de entrada.
+- [ ] 10.3 Cargar el editor con `import()` diferido: el bundle inicial va por ~1,2 MB (BlockNote + Mantine).
 - **Validación**: recorrido completo de la app en local sin fisuras. *(Commit + push)*
 
 ## Fase 11 — Despliegue en Zeabur (al final del todo)
