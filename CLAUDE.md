@@ -161,7 +161,7 @@ Toda la configuración entorno-dependiente vive en ficheros `.env`. **Nunca se h
 
 ## Estado y documentos relacionados
 
-Fases **0-4 cerradas**, más el rediseño visual de la **Fase 4.6**; la siguiente es la **Fase 5** (tags + buscador). La **Fase 4.5** (endurecimiento de seguridad) sigue pendiente.
+Fases **0-4 cerradas**, más el endurecimiento de seguridad de la **Fase 4.5** y el rediseño visual de la **Fase 4.6**. La siguiente es la **Fase 5** (tags + buscador).
 
 | Documento | Para qué |
 |---|---|
