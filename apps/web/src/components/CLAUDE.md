@@ -13,7 +13,8 @@ components/
 ├── DestinationPicker.tsx   ← selector de carpeta destino (compartido)
 ├── FolderFormModal.tsx     ← crear carpeta / editar icono y color
 ├── MoveModal.tsx           ← mover carpeta
-└── MoveDocumentModal.tsx   ← mover documento
+├── MoveDocumentModal.tsx   ← mover documento
+└── TagsModal.tsx           ← gestión de tags (crear, renombrar, color, eliminar)
 ```
 
 ## Composición del layout
@@ -40,6 +41,7 @@ App.tsx         Routes
 - Con un documento abierto la ruta es la de **su** carpeta; si no, la de la carpeta marcada en el árbol.
 - NORMA: el documento abierto llega por `current` de `DocumentsContext`, que **publica `DocumentPage` al cargarlo**. Es la única forma de tener título y carpeta cuando se ha entrado por una URL directa, sin pasar por ningún listado.
 - El interruptor de tema usa `useComputedColorScheme('light')` para **leer** y `setColorScheme` para **escribir** (ver la sección Tema de `.claude/rules/frontend.md`).
+- El **menú de cuenta** lleva la entrada «Etiquetas», que abre `TagsModal`. El estado del diálogo (`useState`) vive aquí, en el header: es el único sitio desde el que se abre.
 
 ## Sidebar
 
@@ -76,6 +78,10 @@ Todos son `Modal` de Mantine, así que **el markup del diálogo ya no está dupl
 - **`FolderFormModal`** sirve para crear y para editar el aspecto, según las props `title`/`submitLabel`/`initial`.
   - NORMA: se monta **condicionalmente** (`{folderForm && <FolderFormModal opened .../>}`), no con `opened={bool}`. Su estado interno se inicializa desde `initial` en el primer render, así que reutilizar la instancia dejaría los datos de la carpeta anterior.
   - No tiene campo de descripción porque **`Category` no tiene esa columna**. No lo añadas sin cambiar el esquema.
+- **`TagsModal`** es la única pantalla de gestión de tags: crear, renombrar en línea, elegir color (`Menu` con los `ColorSwatch` de `FOLDER_COLORS`) y eliminar. Toda su lógica es `useTags()`; no llama a la API por su cuenta.
+  - Monta **dos `Modal`**: el principal y el de confirmar el borrado, que dice **en cuántos documentos está** el tag antes de eliminarlo.
+  - NORMA: dentro del diálogo, **`Escape` cierra el `Modal` entero**, no solo el `Menu` de color que esté abierto. Tenlo en cuenta al automatizar comprobaciones: para cerrar el menú hay que hacer clic fuera de él, no pulsar Escape.
+  - Reutiliza la clase `.row-item` de la vista de lista para las filas, así que se ven igual que allí.
 
 ## Validaciones requeridas
 

@@ -177,6 +177,55 @@ export function reorderCategories(
   });
 }
 
+// ---------------- Tags ----------------
+
+/** Tag tal y como lo devuelve la API. `color` es un nombre de color de Mantine. */
+export interface Tag {
+  id: string;
+  name: string;
+  color: string | null;
+  createdAt: string;
+}
+
+/** En el listado general, cada tag trae en cuántos documentos vivos se usa. */
+export interface TagWithCount extends Tag {
+  documentCount: number;
+}
+
+export function getTags(): Promise<TagWithCount[]> {
+  return request<TagWithCount[]>('/tags');
+}
+
+export function createTag(input: { name: string; color?: string }): Promise<Tag> {
+  return request<Tag>('/tags', { method: 'POST', body: JSON.stringify(input) });
+}
+
+export function updateTag(id: string, input: { name?: string; color?: string }): Promise<Tag> {
+  return request<Tag>(`/tags/${id}`, { method: 'PATCH', body: JSON.stringify(input) });
+}
+
+export function deleteTag(id: string): Promise<{ deleted: number }> {
+  return request<{ deleted: number }>(`/tags/${id}`, { method: 'DELETE' });
+}
+
+/**
+ * Vincula un tag al documento POR NOMBRE: la API lo reutiliza si ya existe (sin
+ * distinguir mayusculas) y lo crea si no. Devuelve los tags del documento.
+ */
+export function attachTag(documentId: string, name: string): Promise<Tag[]> {
+  return request<Tag[]>(`/documents/${documentId}/tags`, {
+    method: 'POST',
+    body: JSON.stringify({ name }),
+  });
+}
+
+/** Quita el tag del documento; el tag sigue existiendo. */
+export function detachTag(documentId: string, tagId: string): Promise<{ removed: number }> {
+  return request<{ removed: number }>(`/documents/${documentId}/tags/${tagId}`, {
+    method: 'DELETE',
+  });
+}
+
 // ---------------- Documentos ----------------
 
 /** Campos que comparten las dos formas de documento que devuelve la API. */
@@ -187,6 +236,8 @@ interface DocumentBase {
   position: number;
   createdAt: string;
   updatedAt: string;
+  /** Tags del documento, ordenados por nombre. Vienen en las dos formas. */
+  tags: Tag[];
 }
 
 /** Documento en un listado: sin el contenido, con un extracto para la vista previa. */

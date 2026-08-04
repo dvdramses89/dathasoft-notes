@@ -50,7 +50,11 @@ Son el contrato con la API, y se importan desde aquí en todo el frontend:
 | `PublicUser`, `LoginResult` | `createdAt` es **`string`**, no `Date`: viene serializado del JSON |
 | `CategoryNode`, `CategoryTreeResult` | `CategoryNode` es recursivo (`children`); `icon` y `color` son `string \| null` |
 | `TreeMode` | `'subtree' \| 'single'` |
+| `Tag`, `TagWithCount` | `color` es un **nombre de color de Mantine**, o `null`. `TagWithCount` solo lo devuelve `GET /tags`, con `documentCount` |
 | `DocumentListItem`, `DocumentFull` | Reflejan `listSelect` / `fullSelect` del backend. **Ya no uno extiende al otro**: comparten un `DocumentBase` interno y luego divergen — el del listado lleva `excerpt`, el completo lleva `contentJson` + `contentText` |
+
+- `tags: Tag[]` está en **`DocumentBase`**, no en uno de los dos: la API los devuelve en las dos formas. Por eso `toListItem()` los conserva sin tocar nada — entran en el `...base` del spread.
+- **Vincular un tag va por nombre** (`attachTag(documentId, name)`), no por id, y devuelve **la lista completa** de tags del documento. Quitar (`detachTag`) devuelve `{ removed }`, así que quien llama actualiza su estado por su cuenta.
 
 - NORMA: **`contentJson` se tipa como `unknown`**, a propósito, para que el cliente no se acople a los tipos de BlockNote. Quien lo consume (`DocumentPage`) hace el cast en su frontera.
 - **`toListItem(doc: DocumentFull): DocumentListItem`** es el único puente entre las dos formas, y se usa al meter en la cache un documento recién creado, movido o guardado. Recorta el `contentText` a 240 caracteres para rellenar el `excerpt`.

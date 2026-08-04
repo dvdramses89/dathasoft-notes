@@ -85,6 +85,7 @@ dathasoft-notes/
 │           ├── auth/           ← AuthContext
 │           ├── categories/     ← CategoriesContext, folderIcons
 │           ├── documents/      ← DocumentEditor, DocumentsContext, codeBlock
+│           ├── tags/           ← TagsContext, TagChips, TagPicker
 │           ├── components/     ← AppShell (layout + header), Sidebar, modales
 │           ├── lib/api.ts      ← cliente HTTP + tipos
 │           └── pages/
@@ -138,7 +139,8 @@ Se cargan **solas** al leer o editar un fichero de ese directorio, así que no o
 | `apps/api/src/prisma/CLAUDE.md` | `PrismaModule` global, única puerta a la BD |
 | `apps/web/src/lib/CLAUDE.md` | Cliente API: `request<T>()`, token, `ApiError`, tipos |
 | `apps/web/src/documents/CLAUDE.md` | Editor BlockNote, autoguardado, cache de documentos |
-| `apps/web/src/components/CLAUDE.md` | Layout, rutas protegidas, Sidebar y drag & drop |
+| `apps/web/src/tags/CLAUDE.md` | Catálogo de tags, `resolve()`, selector por nombre del documento |
+| `apps/web/src/components/CLAUDE.md` | Layout, rutas protegidas, Sidebar, drag & drop y diálogos |
 
 ## Git
 
@@ -163,7 +165,7 @@ Toda la configuración entorno-dependiente vive en ficheros `.env`. **Nunca se h
 
 ## Estado y documentos relacionados
 
-Fases **0-4 cerradas**, más el endurecimiento de seguridad de la **Fase 4.5** y el rediseño visual de la **Fase 4.6**. La **Fase 5** (tags + buscador) está **en curso**: hecha la API de tags, pendientes la UI y el buscador.
+Fases **0-4 cerradas**, más el endurecimiento de seguridad de la **Fase 4.5** y el rediseño visual de la **Fase 4.6**. La **Fase 5** (tags + buscador) está **en curso**: tags completos (API y UI); queda el buscador global con filtrado por tags.
 
 | Documento | Para qué |
 |---|---|
@@ -179,8 +181,8 @@ Fases **0-4 cerradas**, más el endurecimiento de seguridad de la **Fase 4.5** y
 - **Editor BlockNote** con Markdown y resaltado de código multi-lenguaje. — **[hecho]**
 - **Autenticación** de usuarios con JWT. — **[hecho]**
 - **Tema claro y oscuro** con interruptor. — **[hecho]**
-- **Tags** transversales: gestión propia (nombre + color, con contador de uso) y asignación a documentos por nombre. **API hecha, sin UI todavía** — *[UI en la Fase 5.2]*.
-- **Buscador global** (título + `contentText`, full-text de Postgres, combinable con tags). — *[Fase 5.3]*
+- **Tags** transversales: se asignan escribiendo el nombre en el documento (se crean solos), se ven como chips en la vista de carpeta y se gestionan —nombre, color, eliminar— en el diálogo «Etiquetas» del menú de cuenta. — **[hecho]**
+- **Buscador global** (título + `contentText`, full-text de Postgres) y **filtrado por tags**. — *[Fase 5.3]*
 - **Favoritos** por usuario, con su sección en el sidebar. — *[Fase 6]*
 - **Papelera**: borrado suave con restaurar / borrar definitivo. — *[Fase 6]*
 - **Referenciar fuentes** en los documentos mediante bloques custom: enlace web, embed de YouTube, documento interno y adjunto de archivo. — *[Fase 7]*

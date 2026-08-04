@@ -35,6 +35,7 @@ import { useCategories } from '../categories/CategoriesContext';
 import { FolderIcon } from '../categories/folderIcons';
 import { useDocuments } from '../documents/DocumentsContext';
 import type { CategoryNode, DocumentListItem } from '../lib/api';
+import { TagChips } from '../tags/TagChips';
 import { DestinationPicker, type Destination } from '../components/DestinationPicker';
 import { FolderFormModal, type FolderLook } from '../components/FolderFormModal';
 
@@ -396,6 +397,9 @@ export function HomePage() {
                             </Text>
                           )}
                         </Box>
+                        <Box style={{ flex: 'none' }} visibleFrom="sm">
+                          <TagChips tags={doc.tags} max={2} />
+                        </Box>
                         <Text size="xs" c="dimmed" style={{ flex: 'none' }} visibleFrom="xs">
                           {formatDate(doc.updatedAt)}
                         </Text>
@@ -439,6 +443,11 @@ export function HomePage() {
                           {view === 'cards' && doc.excerpt && (
                             <Box className="card-preview" mt="sm">
                               {doc.excerpt}
+                            </Box>
+                          )}
+                          {doc.tags.length > 0 && (
+                            <Box mt="sm">
+                              <TagChips tags={doc.tags} max={view === 'cards' ? 3 : 2} />
                             </Box>
                           )}
                         </Card>

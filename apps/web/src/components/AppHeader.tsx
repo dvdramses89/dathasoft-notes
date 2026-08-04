@@ -11,12 +11,21 @@ import {
   useComputedColorScheme,
   useMantineColorScheme,
 } from '@mantine/core';
-import { IconChevronLeft, IconFileText, IconLogout, IconMoon, IconSun } from '@tabler/icons-react';
+import {
+  IconChevronLeft,
+  IconFileText,
+  IconLogout,
+  IconMoon,
+  IconSun,
+  IconTags,
+} from '@tabler/icons-react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { pathOf, useCategories } from '../categories/CategoriesContext';
 import { FolderIcon } from '../categories/folderIcons';
 import { useDocuments } from '../documents/DocumentsContext';
+import { TagsModal } from './TagsModal';
 
 interface AppHeaderProps {
   navbarOpened: boolean;
@@ -38,6 +47,7 @@ export function AppHeader({ navbarOpened, onToggleNavbar }: AppHeaderProps) {
   const { setColorScheme } = useMantineColorScheme();
   // El efectivo, no el guardado: 'auto' tambien tiene que resolverse a uno.
   const isDark = useComputedColorScheme('light') === 'dark';
+  const [tagsOpened, setTagsOpened] = useState(false);
 
   // Con un documento abierto la ruta es la de SU carpeta, y el documento cierra
   // las migas; si no, la de la carpeta marcada en el arbol.
@@ -146,12 +156,21 @@ export function AppHeader({ navbarOpened, onToggleNavbar }: AppHeaderProps) {
               </Text>
             </Menu.Label>
             <Menu.Divider />
+            <Menu.Item
+              leftSection={<IconTags size={16} />}
+              onClick={() => setTagsOpened(true)}
+            >
+              Etiquetas
+            </Menu.Item>
+            <Menu.Divider />
             <Menu.Item color="red" leftSection={<IconLogout size={16} />} onClick={logout}>
               Cerrar sesión
             </Menu.Item>
           </Menu.Dropdown>
         </Menu>
       </Group>
+
+      <TagsModal opened={tagsOpened} onClose={() => setTagsOpened(false)} />
     </Group>
   );
 }

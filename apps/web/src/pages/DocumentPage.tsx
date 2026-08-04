@@ -5,7 +5,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { DocumentEditor } from '../documents/DocumentEditor';
 import { useDocuments } from '../documents/DocumentsContext';
-import { getDocument, toListItem, updateDocument, type DocumentFull } from '../lib/api';
+import { TagPicker } from '../tags/TagPicker';
+import { getDocument, toListItem, updateDocument, type DocumentFull, type Tag } from '../lib/api';
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 
@@ -127,6 +128,22 @@ export function DocumentPage() {
     }
   }, [doc, title, patchLocal]);
 
+  /**
+   * Refleja el cambio de tags que ya ha guardado el TagPicker. Pasa por
+   * `patchLocal` para que los chips del listado y las migas no se queden viejos.
+   */
+  const applyTags = useCallback(
+    (tags: Tag[]) => {
+      if (!doc) {
+        return;
+      }
+      const updated = { ...doc, tags };
+      setDoc(updated);
+      patchLocal(updated);
+    },
+    [doc, patchLocal],
+  );
+
   /** Guarda el contenido del editor (autoguardado con pausa al escribir). */
   const saveContent = useCallback(
     (contentJson: Block[], contentText: string) => {
@@ -203,6 +220,12 @@ export function DocumentPage() {
             <SaveIndicator state={saveState} />
           </Box>
         </Group>
+
+        {/* Los tags van entre el titulo y el editor: se ven al abrir el
+            documento, pero no compiten con la barra de formato. */}
+        <Box mb="lg">
+          <TagPicker documentId={doc.id} tags={doc.tags} onChange={applyTags} />
+        </Box>
 
         {/* La key remonta el editor al cambiar de documento: el contenido inicial
             de BlockNote se fija al crearlo y no es reactivo. */}

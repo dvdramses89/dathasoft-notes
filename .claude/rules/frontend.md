@@ -16,6 +16,7 @@ src/
 ├── auth/         ← feature: AuthContext
 ├── categories/   ← feature: CategoriesContext, folderIcons
 ├── documents/    ← feature: DocumentEditor, DocumentsContext, codeBlock
+├── tags/         ← feature: TagsContext, TagChips, TagPicker
 ├── components/   ← técnica: AppLayout, AppHeader, ProtectedRoute, Sidebar, modales
 ├── lib/          ← técnica: api.ts
 └── pages/        ← técnica: Home, Document, Login, Register
@@ -43,7 +44,7 @@ src/
 NORMA: **la UI se construye con Mantine** (`@mantine/core`). Antes de escribir un componente o una regla CSS, mira si Mantine ya lo trae.
 
 - `MantineProvider` envuelve toda la app en `main.tsx`, con el tema de `theme.ts`. El CSS de Mantine se importa **antes** de `index.css`, para que lo propio pueda ajustarlo.
-- En uso hoy: `AppShell`, `Modal`, `Menu`, `Button`, `ActionIcon`, `TextInput`, `PasswordInput`, `Card`, `Paper`, `Badge`, `Checkbox`, `Radio`, `SegmentedControl`, `SimpleGrid`, `Stack`, `Group`, `Text`, `Title`, `Breadcrumbs`, `Anchor`, `Avatar`, `Tooltip`, `ScrollArea`, `Loader`, `Alert`, `Center`, `Box`, `Divider`, `ColorSwatch`, `UnstyledButton`.
+- En uso hoy: `AppShell`, `Modal`, `Menu`, `Button`, `ActionIcon`, `TextInput`, `PasswordInput`, `Autocomplete`, `Card`, `Paper`, `Badge`, `Checkbox`, `Radio`, `SegmentedControl`, `SimpleGrid`, `Stack`, `Group`, `Text`, `Title`, `Breadcrumbs`, `Anchor`, `Avatar`, `Tooltip`, `ScrollArea`, `Loader`, `Alert`, `Center`, `Box`, `Divider`, `ColorSwatch`, `CloseButton`, `UnstyledButton`.
 - De `@mantine/hooks` se usan `useDisclosure` (el sidebar plegable) y `useLocalStorage` (el modo de vista recordado). Los demás están disponibles.
 - NORMA: **no se instalan más paquetes de Mantine** (`@mantine/form`, `@mantine/dates`, `@mantine/notifications`, `@mantine/spotlight`…) sin pedirlo. Solo están `core` y `hooks`.
 - NORMA: **no se envuelven los componentes de Mantine en componentes propios** (`<MyButton>`). Se usan directos, con sus props.
@@ -68,7 +69,9 @@ Los tres hooks (`useAuth`, `useCategories`, `useDocuments`) viven **junto a su P
 Dónde se monta cada uno:
 
 - `MantineProvider` y `AuthContext` — en `main.tsx`, envuelven toda la app (las páginas de login las necesitan).
-- `CategoriesContext` y `DocumentsContext` — en `AppLayout`, es decir **dentro de la zona protegida**. No se cargan datos si no hay sesión.
+- `CategoriesContext`, `DocumentsContext` y `TagsContext` — en `AppLayout`, es decir **dentro de la zona protegida**. No se cargan datos si no hay sesión.
+
+Cada Context tiene su propia política de refresco, y las tres conviven a propósito: `CategoriesContext` **recarga el árbol entero** tras cada mutación, `DocumentsContext` hace **actualizaciones optimistas** sobre su cache, y `TagsContext` recarga el catálogo (es pequeño) pero además ofrece `resolve()` para que los datos ya pintados no envejezcan. Ver `apps/web/src/tags/CLAUDE.md`.
 
 DEUDA: los tres hooks llevan `// eslint-disable-next-line react-refresh/only-export-components`, que hoy **no hace nada** porque no hay ESLint configurado. No los borres: volverían a hacer falta si algún día se añade.
 
