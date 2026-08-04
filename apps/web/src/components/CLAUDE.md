@@ -42,6 +42,10 @@ App.tsx         Routes
 - NORMA: el documento abierto llega por `current` de `DocumentsContext`, que **publica `DocumentPage` al cargarlo**. Es la única forma de tener título y carpeta cuando se ha entrado por una URL directa, sin pasar por ningún listado.
 - El interruptor de tema usa `useComputedColorScheme('light')` para **leer** y `setColorScheme` para **escribir** (ver la sección Tema de `.claude/rules/frontend.md`).
 - El **menú de cuenta** lleva la entrada «Etiquetas», que abre `TagsModal`. El estado del diálogo (`useState`) vive aquí, en el header: es el único sitio desde el que se abre.
+- El **campo de búsqueda** también vive aquí, y es el único de la app: `SearchPage` no tiene uno propio.
+  - El texto es `useState` local, pero **la búsqueda es la URL**: Enter navega a `/search?q=…`, conservando los `tags` ya marcados. Un `useEffect` sincroniza el campo con `?q=` al entrar en `/search` y lo vacía al salir.
+  - `useHotkeys([['mod+K', …]])` lo enfoca con Ctrl+K (Cmd+K en Mac).
+  - Por debajo de `sm` el campo se oculta (`visibleFrom`) y en su lugar aparece un `ActionIcon` de lupa que lleva a `/search`.
 
 ## Sidebar
 

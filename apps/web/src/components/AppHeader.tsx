@@ -7,20 +7,23 @@ import {
   Group,
   Menu,
   Text,
+  TextInput,
   Tooltip,
   useComputedColorScheme,
   useMantineColorScheme,
 } from '@mantine/core';
+import { useHotkeys } from '@mantine/hooks';
 import {
   IconChevronLeft,
   IconFileText,
   IconLogout,
   IconMoon,
+  IconSearch,
   IconSun,
   IconTags,
 } from '@tabler/icons-react';
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { pathOf, useCategories } from '../categories/CategoriesContext';
 import { FolderIcon } from '../categories/folderIcons';
@@ -48,6 +51,38 @@ export function AppHeader({ navbarOpened, onToggleNavbar }: AppHeaderProps) {
   // El efectivo, no el guardado: 'auto' tambien tiene que resolverse a uno.
   const isDark = useComputedColorScheme('light') === 'dark';
   const [tagsOpened, setTagsOpened] = useState(false);
+
+  // Buscador: el texto es estado local, pero la busqueda vive en la URL.
+  const location = useLocation();
+  const [params] = useSearchParams();
+  const searchRef = useRef<HTMLInputElement | null>(null);
+  const [term, setTerm] = useState('');
+  const enBusqueda = location.pathname === '/search';
+
+  // Al entrar en /search (o al cambiar la consulta desde la propia pagina) el
+  // campo refleja lo que se esta buscando; al salir, se vacia.
+  useEffect(() => {
+    setTerm(enBusqueda ? (params.get('q') ?? '') : '');
+  }, [enBusqueda, params]);
+
+  useHotkeys([['mod+K', () => searchRef.current?.focus()]]);
+
+  function submitSearch(event: KeyboardEvent<HTMLInputElement>) {
+    if (event.key !== 'Enter') {
+      return;
+    }
+    const clean = term.trim();
+    // Se conservan los tags marcados: refinar el texto no deshace el filtro.
+    const search = new URLSearchParams();
+    if (clean) {
+      search.set('q', clean);
+    }
+    const tags = enBusqueda ? params.get('tags') : null;
+    if (tags) {
+      search.set('tags', tags);
+    }
+    navigate(`/search?${search.toString()}`);
+  }
 
   // Con un documento abierto la ruta es la de SU carpeta, y el documento cierra
   // las migas; si no, la de la carpeta marcada en el arbol.
@@ -121,6 +156,31 @@ export function AppHeader({ navbarOpened, onToggleNavbar }: AppHeaderProps) {
       </Group>
 
       <Group gap="xs" wrap="nowrap">
+        <TextInput
+          ref={searchRef}
+          size="xs"
+          radius="md"
+          w={200}
+          visibleFrom="sm"
+          value={term}
+          onChange={(e) => setTerm(e.currentTarget.value)}
+          onKeyDown={submitSearch}
+          placeholder="Buscar…  Ctrl+K"
+          aria-label="Buscar documentos"
+          leftSection={<IconSearch size={14} stroke={1.8} />}
+        />
+        <Tooltip label="Buscar">
+          <ActionIcon
+            variant="subtle"
+            color="gray"
+            hiddenFrom="sm"
+            aria-label="Buscar documentos"
+            onClick={() => navigate('/search')}
+          >
+            <IconSearch size={18} />
+          </ActionIcon>
+        </Tooltip>
+
         <Tooltip label={isDark ? 'Tema claro' : 'Tema oscuro'}>
           <ActionIcon
             variant="subtle"

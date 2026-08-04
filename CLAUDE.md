@@ -162,10 +162,11 @@ Toda la configuración entorno-dependiente vive en ficheros `.env`. **Nunca se h
 - Generar un `JWT_SECRET`: `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"`.
 - Las variables de la API **se validan al arrancar** con `class-validator` en `apps/api/src/env.validation.ts` (`ConfigModule.forRoot({ validate })`). `DATABASE_URL` y `JWT_SECRET` son obligatorias siempre, y `CORS_ORIGINS` lo es **solo si `NODE_ENV=production`**; `PORT`, `NODE_ENV` y `JWT_EXPIRES_IN` son opcionales y mantienen su default inline en el consumidor (`?? 3000`, `?? '1d'`).
 - DEUDA: `ConfigModule.forRoot()` va **sin `envFilePath`** — no se cargan `.env.development` ni `.env.production`, solo `.env`.
+- En el `.env` local de desarrollo, `THROTTLE_REGISTER_LIMIT` está subido a 200: el default de 3 altas/hora bloquea las comprobaciones que registran usuarios de prueba. Como ese fichero no se commitea, **producción conserva el default**.
 
 ## Estado y documentos relacionados
 
-Fases **0-4 cerradas**, más el endurecimiento de seguridad de la **Fase 4.5** y el rediseño visual de la **Fase 4.6**. La **Fase 5** (tags + buscador) está **en curso**: tags completos (API y UI); queda el buscador global con filtrado por tags.
+Fases **0-4 cerradas**, más el endurecimiento de seguridad de la **Fase 4.5** y el rediseño visual de la **Fase 4.6**. Cerradas también la **Fase 5** (tags + buscador global). La siguiente es la **Fase 6** (favoritos + papelera).
 
 | Documento | Para qué |
 |---|---|
@@ -182,7 +183,7 @@ Fases **0-4 cerradas**, más el endurecimiento de seguridad de la **Fase 4.5** y
 - **Autenticación** de usuarios con JWT. — **[hecho]**
 - **Tema claro y oscuro** con interruptor. — **[hecho]**
 - **Tags** transversales: se asignan escribiendo el nombre en el documento (se crean solos), se ven como chips en la vista de carpeta y se gestionan —nombre, color, eliminar— en el diálogo «Etiquetas» del menú de cuenta. — **[hecho]**
-- **Buscador global** (título + `contentText`, full-text de Postgres) y **filtrado por tags**. — *[Fase 5.3]*
+- **Buscador global** en la cabecera (Ctrl+K): full-text de Postgres sobre título y contenido, ordenado por relevancia, combinable con **filtro por tags en modo Y**. La búsqueda vive en la URL (`/search?q=&tags=`). — **[hecho]**
 - **Favoritos** por usuario, con su sección en el sidebar. — *[Fase 6]*
 - **Papelera**: borrado suave con restaurar / borrar definitivo. — *[Fase 6]*
 - **Referenciar fuentes** en los documentos mediante bloques custom: enlace web, embed de YouTube, documento interno y adjunto de archivo. — *[Fase 7]*

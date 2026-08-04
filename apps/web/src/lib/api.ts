@@ -270,6 +270,24 @@ export function getDocuments(categoryId?: string | null): Promise<DocumentListIt
   return request<DocumentListItem[]>(`/documents${query}`);
 }
 
+/** Tope de resultados del buscador; el mismo que aplica la API. */
+export const SEARCH_LIMIT = 50;
+
+/**
+ * Buscador global. `q` busca en título y contenido (full-text) y `tagIds`
+ * filtra en modo Y. Sin ninguno de los dos, la API devuelve una lista vacía.
+ */
+export function searchDocuments(q: string, tagIds: string[] = []): Promise<DocumentListItem[]> {
+  const params = new URLSearchParams();
+  if (q) {
+    params.set('q', q);
+  }
+  if (tagIds.length > 0) {
+    params.set('tagIds', tagIds.join(','));
+  }
+  return request<DocumentListItem[]>(`/documents/search?${params.toString()}`);
+}
+
 export function getDocument(id: string): Promise<DocumentFull> {
   return request<DocumentFull>(`/documents/${id}`);
 }

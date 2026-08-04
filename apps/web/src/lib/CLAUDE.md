@@ -55,6 +55,7 @@ Son el contrato con la API, y se importan desde aquí en todo el frontend:
 
 - `tags: Tag[]` está en **`DocumentBase`**, no en uno de los dos: la API los devuelve en las dos formas. Por eso `toListItem()` los conserva sin tocar nada — entran en el `...base` del spread.
 - **Vincular un tag va por nombre** (`attachTag(documentId, name)`), no por id, y devuelve **la lista completa** de tags del documento. Quitar (`detachTag`) devuelve `{ removed }`, así que quien llama actualiza su estado por su cuenta.
+- **`searchDocuments(q, tagIds)`** monta la query con `URLSearchParams` y **omite los parámetros vacíos**, para no mandar `?q=&tagIds=`. Exporta también `SEARCH_LIMIT = 50`, que **duplica el tope de la API a propósito**: es la única forma de que `SearchPage` sepa que el resultado se ha cortado, porque la respuesta es un array plano sin total. Si cambia en el backend, hay que cambiarlo aquí.
 
 - NORMA: **`contentJson` se tipa como `unknown`**, a propósito, para que el cliente no se acople a los tipos de BlockNote. Quien lo consume (`DocumentPage`) hace el cast en su frontera.
 - **`toListItem(doc: DocumentFull): DocumentListItem`** es el único puente entre las dos formas, y se usa al meter en la cache un documento recién creado, movido o guardado. Recorta el `contentText` a 240 caracteres para rellenar el `excerpt`.

@@ -19,7 +19,7 @@ src/
 ├── tags/         ← feature: TagsContext, TagChips, TagPicker
 ├── components/   ← técnica: AppLayout, AppHeader, ProtectedRoute, Sidebar, modales
 ├── lib/          ← técnica: api.ts
-└── pages/        ← técnica: Home, Document, Login, Register
+└── pages/        ← técnica: Home, Search, Document, Login, Register
 ```
 
 - NORMA: **no crear `hooks/`, `stores/`, `services/`, `types/` ni `features/`.** Los hooks viven junto a su Context, los tipos junto a su cliente API.
@@ -44,8 +44,8 @@ src/
 NORMA: **la UI se construye con Mantine** (`@mantine/core`). Antes de escribir un componente o una regla CSS, mira si Mantine ya lo trae.
 
 - `MantineProvider` envuelve toda la app en `main.tsx`, con el tema de `theme.ts`. El CSS de Mantine se importa **antes** de `index.css`, para que lo propio pueda ajustarlo.
-- En uso hoy: `AppShell`, `Modal`, `Menu`, `Button`, `ActionIcon`, `TextInput`, `PasswordInput`, `Autocomplete`, `Card`, `Paper`, `Badge`, `Checkbox`, `Radio`, `SegmentedControl`, `SimpleGrid`, `Stack`, `Group`, `Text`, `Title`, `Breadcrumbs`, `Anchor`, `Avatar`, `Tooltip`, `ScrollArea`, `Loader`, `Alert`, `Center`, `Box`, `Divider`, `ColorSwatch`, `CloseButton`, `UnstyledButton`.
-- De `@mantine/hooks` se usan `useDisclosure` (el sidebar plegable) y `useLocalStorage` (el modo de vista recordado). Los demás están disponibles.
+- En uso hoy: `AppShell`, `Modal`, `Menu`, `Button`, `ActionIcon`, `TextInput`, `PasswordInput`, `Autocomplete`, `Card`, `Paper`, `Badge`, `Chip`, `Checkbox`, `Radio`, `SegmentedControl`, `SimpleGrid`, `Stack`, `Group`, `Text`, `Title`, `Breadcrumbs`, `Anchor`, `Avatar`, `Tooltip`, `ScrollArea`, `Loader`, `Alert`, `Center`, `Box`, `Divider`, `ColorSwatch`, `CloseButton`, `UnstyledButton`.
+- De `@mantine/hooks` se usan `useDisclosure` (el sidebar plegable), `useLocalStorage` (el modo de vista recordado) y `useHotkeys` (el `Ctrl+K` que enfoca el buscador). Los demás están disponibles.
 - NORMA: **no se instalan más paquetes de Mantine** (`@mantine/form`, `@mantine/dates`, `@mantine/notifications`, `@mantine/spotlight`…) sin pedirlo. Solo están `core` y `hooks`.
 - NORMA: **no se envuelven los componentes de Mantine en componentes propios** (`<MyButton>`). Se usan directos, con sus props.
 - Estilos puntuales: props del sistema de Mantine (`mt`, `p`, `c`, `fw`, `size`) o `style` inline. Para lo que se repite, una clase en `index.css`.
@@ -120,6 +120,7 @@ El `finally` con `setSubmitting(false)` no es opcional: sin él, un error deja e
 
 - `BrowserRouter` en `main.tsx`; el árbol de rutas completo en `App.tsx`.
 - `/login` y `/register` redirigen a `/` si ya hay sesión.
+- NORMA: **el estado del buscador vive en la URL** (`/search?q=…&tags=id,id`), con `useSearchParams`. No en un Context ni en `useState` de la página: así el resultado se comparte, sobrevive a un recargado y el botón de atrás funciona. Es el único sitio del front que usa query params.
 - `<ProtectedRoute>` es un **layout route sin path**; `<AppLayout>` anida dentro y monta los providers de datos.
 - `*` redirige a `/`.
 

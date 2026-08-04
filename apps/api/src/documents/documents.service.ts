@@ -55,6 +55,13 @@ const listQuerySelect = {
 /** Caracteres de texto que viajan en un listado, para la vista previa. */
 const EXCERPT_LENGTH = 240;
 
+/**
+ * Tope de resultados del buscador. La API no tiene paginacion en ningun sitio,
+ * asi que se acota aqui para no devolver el corpus entero: el front avisa
+ * cuando recibe justo este numero.
+ */
+const SEARCH_LIMIT = 50;
+
 /** Fila cruda del detalle, con los vinculos de tags sin aplanar. */
 type DocumentFullRow = Prisma.DocumentGetPayload<{ select: typeof fullQuerySelect }>;
 
@@ -110,12 +117,64 @@ export class DocumentsService {
       orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
       select: listQuerySelect,
     });
-    // `contentText` se descarta aqui: solo sale de la API como extracto.
-    return docs.map(({ contentText, tags, ...doc }) => ({
-      ...doc,
-      excerpt: this.toExcerpt(contentText),
-      tags: tags.map((link) => link.tag),
-    }));
+    return this.toListItems(docs);
+  }
+
+  /**
+   * Buscador global: texto completo sobre `title` + `contentText` y/o filtro por
+   * tags. Los dos criterios son opcionales y se combinan:
+   *
+   * - `q` usa la columna generada `searchVector` (titulo con peso A, cuerpo con
+   *   peso B) y ordena por `ts_rank`, de mas a menos relevante.
+   * - `tagIds` filtra en modo Y: el documento debe llevar TODOS los tags.
+   * - Sin ningun criterio devuelve `[]`, no el corpus entero.
+   */
+  async search(ownerId: string, q: string, tagIds: string[]): Promise<DocumentListItem[]> {
+    if (!q && tagIds.length === 0) {
+      return [];
+    }
+
+    // Orden de relevancia: solo lo puede calcular Postgres, porque Prisma no
+    // sabe consultar una columna `tsvector`. Es la unica consulta cruda del
+    // modulo, y va con template tag (parametrizada), nunca concatenada.
+    let rankedIds: string[] | null = null;
+    if (q) {
+      const rows = await this.prisma.$queryRaw<Array<{ id: string }>>`
+        SELECT d."id"
+        FROM "Document" d, websearch_to_tsquery('spanish', ${q}) AS query
+        WHERE d."ownerId" = ${ownerId}::uuid
+          AND d."deletedAt" IS NULL
+          AND d."searchVector" @@ query
+        ORDER BY ts_rank(d."searchVector", query) DESC, d."updatedAt" DESC
+        LIMIT ${SEARCH_LIMIT}
+      `;
+      rankedIds = rows.map((row) => row.id);
+      if (rankedIds.length === 0) {
+        return [];
+      }
+    }
+
+    // El resto va por Prisma: proyeccion, tags y el filtro Y de etiquetas.
+    const docs = await this.prisma.document.findMany({
+      where: {
+        ownerId,
+        deletedAt: null,
+        ...(rankedIds ? { id: { in: rankedIds } } : {}),
+        // Un `some` por tag: asi se exigen todos, no cualquiera de ellos.
+        ...(tagIds.length > 0 ? { AND: tagIds.map((tagId) => ({ tags: { some: { tagId } } })) } : {}),
+      },
+      // Con texto manda la relevancia (se reordena abajo); sin el, lo reciente.
+      orderBy: rankedIds ? undefined : [{ updatedAt: 'desc' }],
+      take: SEARCH_LIMIT,
+      select: listQuerySelect,
+    });
+
+    const items = this.toListItems(docs);
+    if (!rankedIds) {
+      return items;
+    }
+    const position = new Map(rankedIds.map((id, index) => [id, index]));
+    return items.sort((a, b) => (position.get(a.id) ?? 0) - (position.get(b.id) ?? 0));
   }
 
   async findOne(ownerId: string, id: string): Promise<DocumentFull> {
@@ -196,6 +255,18 @@ export class DocumentsService {
   }
 
   // ---------------- helpers ----------------
+
+  /**
+   * Da forma a las filas de un listado: descarta `contentText` —que no sale
+   * nunca entero de la API, solo como extracto— y aplana los tags.
+   */
+  private toListItems(rows: Prisma.DocumentGetPayload<{ select: typeof listQuerySelect }>[]): DocumentListItem[] {
+    return rows.map(({ contentText, tags, ...doc }) => ({
+      ...doc,
+      excerpt: this.toExcerpt(contentText),
+      tags: tags.map((link) => link.tag),
+    }));
+  }
 
   /** Aplana los vinculos de tags de la fila: `[{tag}]` -> `[tag]`. */
   private toFull(doc: DocumentFullRow): DocumentFull {

@@ -6,6 +6,7 @@ import { DocumentPage } from './pages/DocumentPage';
 import { HomePage } from './pages/HomePage';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
+import { SearchPage } from './pages/SearchPage';
 
 export function App() {
   const { user } = useAuth();
@@ -20,6 +21,7 @@ export function App() {
       <Route element={<ProtectedRoute />}>
         <Route element={<AppLayout />}>
           <Route path="/" element={<HomePage />} />
+          <Route path="/search" element={<SearchPage />} />
           <Route path="/documents/:id" element={<DocumentPage />} />
         </Route>
       </Route>

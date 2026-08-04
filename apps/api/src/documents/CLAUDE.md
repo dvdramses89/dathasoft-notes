@@ -79,6 +79,34 @@ Cualquier otro valor → 400 `'categoryId debe ser un UUID o "root"'`. La compro
 
 NORMA: `undefined` y `null` **no son intercambiables** aquí. Al propagar el filtro hacia el servicio, no uses `?? null` ni `|| undefined`: colapsarías dos casos distintos.
 
+### El buscador: `GET /api/documents/search`
+
+Texto completo y/o tags, ambos opcionales y combinables. **Sin ninguno de los dos devuelve `[]`**, nunca el corpus entero.
+
+Se resuelve en **dos consultas**, y el reparto es deliberado:
+
+1. **Solo el ranking va en SQL crudo**, porque Prisma no sabe consultar una columna `tsvector`:
+   ```ts
+   await this.prisma.$queryRaw<Array<{ id: string }>>`
+     SELECT d."id"
+     FROM "Document" d, websearch_to_tsquery('spanish', ${q}) AS query
+     WHERE d."ownerId" = ${ownerId}::uuid AND d."deletedAt" IS NULL
+       AND d."searchVector" @@ query
+     ORDER BY ts_rank(d."searchVector", query) DESC, d."updatedAt" DESC
+     LIMIT ${SEARCH_LIMIT}`
+   ```
+   NORMA: **template tag, nunca `$queryRawUnsafe` ni concatenación** (regla 3 de `.claude/rules/security.md`). Devuelve **solo ids**: la proyección la hace Prisma después.
+2. **Todo lo demás va por Prisma**: el select de listado, los tags y el filtro por etiquetas. El orden de relevancia se reaplica en memoria con un mapa `id → posición`.
+
+Reglas que se derivan:
+
+- **Los tags filtran en Y**: un `some` por cada tag (`AND: tagIds.map(...)`), así que el documento debe llevarlos **todos**. Cambiarlo a O es cambiar ese `AND` por un solo `some` con `in`.
+- **Sin texto, el orden es `updatedAt` descendente**: no hay relevancia que calcular.
+- `websearch_to_tsquery` entiende la sintaxis de un buscador web (comillas para frase exacta, `or`, `-`) y **nunca lanza error de sintaxis**, a diferencia de `to_tsquery`. Por eso se usa esa y no otra.
+- NORMA: **no hay coincidencia por prefijo.** Buscar `post` no encuentra "postgres"; el diccionario `spanish` sí lematiza (`migracion` encuentra "migraciones"). Si algún día se quiere prefijo, es aquí y hay que cuidar el escapado.
+- **Tope de `SEARCH_LIMIT` (50) sin paginación ni total**, coherente con el resto de la API. El front deduce que hay más si recibe exactamente 50.
+- El `ownerId` va en el `where` de **las dos** consultas.
+
 ### `contentJson` y `contentText`
 
 - `contentJson` es el árbol de bloques de BlockNote, guardado como **JSONB opaco**. La API **no lo interpreta, no lo valida y no lo recorre**. Ver la regla 5 de `.claude/rules/security.md`: es contenido no confiable.
@@ -100,13 +128,14 @@ Todos bajo `@UseGuards(JwtAuthGuard)` a nivel de clase.
 |---|---|---|---|
 | POST | `/api/documents` | `CreateDocumentDto` | `DocumentFull` · 201 |
 | GET | `/api/documents` | `?categoryId=<uuid>\|root` | `DocumentListItem[]` |
+| GET | `/api/documents/search` | `?q=texto&tagIds=uuid,uuid` | `DocumentListItem[]` (máx. 50) |
 | PATCH | `/api/documents/reorder` | `ReorderDocumentsDto` | `{ reordered: n }` |
 | GET | `/api/documents/:id` | — | `DocumentFull` |
 | PATCH | `/api/documents/:id` | `UpdateDocumentDto` | `DocumentFull` |
 | PATCH | `/api/documents/:id/move` | `MoveDocumentDto` | `DocumentFull` |
 | DELETE | `/api/documents/:id` | — | `{ deleted: 1 }` |
 
-`reorder` **debe declararse antes que `:id`**. El `PATCH /:id` es el que recibe el autoguardado del editor, así que es el endpoint más llamado de la API.
+`search` y `reorder` **deben declararse antes que `:id`**. El `PATCH /:id` es el que recibe el autoguardado del editor, así que es el endpoint más llamado de la API.
 
 Bajo `/api/documents/:documentId/tags` hay tres endpoints más, pero **son del módulo `tags`** (`DocumentTagsController`). No colisionan con `GET /api/documents/:id`: tienen un segmento más.
 
@@ -130,6 +159,7 @@ Bajo `/api/documents/:documentId/tags` hay tres endpoints más, pero **son del m
 4. **`GET /:id`** → sí trae `contentJson` y `contentText`.
 5. **Guardar** con `PATCH /:id` — simular el autoguardado del editor y comprobar que `updatedAt` cambia.
 6. **Buscar en la BD** que el `searchVector` se ha actualizado tras editar el contenido (es la señal de que `contentText` llega bien).
+6b. **Buscador** — `?q=` encuentra por título y por contenido, con el título pesando más; dos palabras se combinan en Y; el singular encuentra al plural; `?tagIds=a,b` exige **ambos** tags; sin criterios devuelve `[]`; un `tagIds` que no es UUID da 400; y un documento en la papelera deja de aparecer.
 7. **Mover** a otra carpeta y a la raíz (`categoryId: null`).
 8. **Crear o mover a una carpeta de otro usuario** → **404**.
 9. **Borrar la carpeta padre** → el documento sigue existiendo y aparece en la raíz.

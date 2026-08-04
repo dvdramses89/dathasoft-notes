@@ -79,7 +79,8 @@ Reglas que se derivan de esto:
 
 - NORMA: **la BD recalcula el vector sola.** Nunca escribas `searchVector` desde el código; Postgres rechazaría el `INSERT`/`UPDATE`.
 - NORMA: **nunca "arregles" el `dbgenerated()`** ni lo sustituyas por un valor. Si `prisma migrate dev` propone tocar esa columna, la migración está mal: revísala antes de aplicarla.
-- Consecuencia para el buscador (Fase 5): **basta con mantener `contentText` al día**. El front lo deriva del contenido del editor y lo manda en cada guardado; el vector se actualiza en cascada.
+- Consecuencia para el buscador: **basta con mantener `contentText` al día**. El front lo deriva del contenido del editor y lo manda en cada guardado; el vector se actualiza en cascada.
+- Quien lo consulta es `documents.service.ts`, con `websearch_to_tsquery('spanish', …)` y `ts_rank`, en la **única consulta cruda** del módulo. Detalle en `apps/api/src/documents/CLAUDE.md`.
 
 ## Consultas desde los servicios
 

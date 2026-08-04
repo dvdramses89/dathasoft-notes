@@ -43,6 +43,24 @@ export class DocumentsController {
     return this.documents.list(user.id, this.parseCategoryFilter(categoryId));
   }
 
+  /**
+   * GET /api/documents/search?q=texto&tagIds=uuid,uuid
+   *
+   * Buscador global. Los dos parametros son opcionales y se combinan; los tags
+   * filtran en modo Y (el documento debe llevarlos todos). Sin ninguno de los
+   * dos devuelve una lista vacia.
+   *
+   * Va ANTES de :id, o la ruta con parametro capturaria "search".
+   */
+  @Get('search')
+  search(
+    @CurrentUser() user: PublicUser,
+    @Query('q') q?: string,
+    @Query('tagIds') tagIds?: string,
+  ) {
+    return this.documents.search(user.id, (q ?? '').trim(), this.parseTagIds(tagIds));
+  }
+
   // PATCH /api/documents/reorder -> reordena los documentos de una carpeta
   // (se declara ANTES de :id para que no lo capture la ruta con parametro)
   @Patch('reorder')
@@ -80,6 +98,23 @@ export class DocumentsController {
   @Delete(':id')
   remove(@CurrentUser() user: PublicUser, @Param('id', ParseUUIDPipe) id: string) {
     return this.documents.remove(user.id, id);
+  }
+
+  /** Lista de UUIDs separados por comas, sin repetidos. Vacia si no viene. */
+  private parseTagIds(value?: string): string[] {
+    if (!value) {
+      return [];
+    }
+    const ids = value
+      .split(',')
+      .map((id) => id.trim())
+      .filter((id) => id !== '');
+    for (const id of ids) {
+      if (!UUID_RE.test(id)) {
+        throw new BadRequestException('tagIds debe ser una lista de UUID separados por comas');
+      }
+    }
+    return [...new Set(ids)];
   }
 
   /** undefined = sin filtro · null = raiz ("root") · uuid = esa carpeta. */
