@@ -1,8 +1,18 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { tagSelect, type TagItem } from '../tags/tags.service';
 import { CreateDocumentDto } from './dto/create-document.dto';
 import { UpdateDocumentDto } from './dto/update-document.dto';
+
+/**
+ * Vinculos de tags del documento, ordenados por nombre. Se piden asi a la BD y
+ * se aplanan antes de responder: la API devuelve los tags, no la tabla pivote.
+ */
+const tagsRelation = {
+  select: { tag: { select: tagSelect } },
+  orderBy: { tag: { name: 'asc' } },
+} as const;
 
 /** Documento completo (incluye el contenido del editor). */
 const fullSelect = {
@@ -26,23 +36,36 @@ const listSelect = {
   updatedAt: true,
 } satisfies Prisma.DocumentSelect;
 
+/** Lo que se pide de verdad a la BD en un detalle: lo anterior mas los tags. */
+const fullQuerySelect = {
+  ...fullSelect,
+  tags: tagsRelation,
+} satisfies Prisma.DocumentSelect;
+
 /**
  * Lo que se pide de verdad a la BD en un listado: lo anterior mas el texto
- * plano, del que solo sale el extracto. `contentText` no se devuelve.
+ * plano, del que solo sale el extracto, y los tags. `contentText` no se devuelve.
  */
 const listQuerySelect = {
   ...listSelect,
   contentText: true,
+  tags: tagsRelation,
 } satisfies Prisma.DocumentSelect;
 
 /** Caracteres de texto que viajan en un listado, para la vista previa. */
 const EXCERPT_LENGTH = 240;
 
-export type DocumentFull = Prisma.DocumentGetPayload<{ select: typeof fullSelect }>;
+/** Fila cruda del detalle, con los vinculos de tags sin aplanar. */
+type DocumentFullRow = Prisma.DocumentGetPayload<{ select: typeof fullQuerySelect }>;
+
+export type DocumentFull = Prisma.DocumentGetPayload<{ select: typeof fullSelect }> & {
+  tags: TagItem[];
+};
 
 /** Documento de un listado: sin el contenido, con un extracto para la vista previa. */
 export type DocumentListItem = Prisma.DocumentGetPayload<{ select: typeof listSelect }> & {
   excerpt: string;
+  tags: TagItem[];
 };
 
 @Injectable()
@@ -55,7 +78,7 @@ export class DocumentsService {
       await this.assertCategoryOwned(ownerId, categoryId);
     }
     const position = await this.nextPosition(ownerId, categoryId);
-    return this.prisma.document.create({
+    const doc = await this.prisma.document.create({
       data: {
         title: dto.title,
         // Documento nuevo sin contenido = documento BlockNote vacio (array de bloques).
@@ -65,8 +88,9 @@ export class DocumentsService {
         position,
         ownerId,
       },
-      select: fullSelect,
+      select: fullQuerySelect,
     });
+    return this.toFull(doc);
   }
 
   /**
@@ -87,27 +111,28 @@ export class DocumentsService {
       select: listQuerySelect,
     });
     // `contentText` se descarta aqui: solo sale de la API como extracto.
-    return docs.map(({ contentText, ...doc }) => ({
+    return docs.map(({ contentText, tags, ...doc }) => ({
       ...doc,
       excerpt: this.toExcerpt(contentText),
+      tags: tags.map((link) => link.tag),
     }));
   }
 
   async findOne(ownerId: string, id: string): Promise<DocumentFull> {
     const doc = await this.prisma.document.findFirst({
       where: { id, ownerId, deletedAt: null },
-      select: fullSelect,
+      select: fullQuerySelect,
     });
     if (!doc) {
       throw new NotFoundException('Documento no encontrado');
     }
-    return doc;
+    return this.toFull(doc);
   }
 
   /** Guarda titulo y/o contenido (el `searchVector` se recalcula solo en la BD). */
   async update(ownerId: string, id: string, dto: UpdateDocumentDto): Promise<DocumentFull> {
     await this.assertOwned(ownerId, id);
-    return this.prisma.document.update({
+    const doc = await this.prisma.document.update({
       where: { id },
       data: {
         title: dto.title ?? undefined,
@@ -115,8 +140,9 @@ export class DocumentsService {
           dto.contentJson === undefined ? undefined : (dto.contentJson as Prisma.InputJsonValue),
         contentText: dto.contentText ?? undefined,
       },
-      select: fullSelect,
+      select: fullQuerySelect,
     });
+    return this.toFull(doc);
   }
 
   /** Mueve el documento a otra carpeta (o a la raiz), al final de la lista destino. */
@@ -126,11 +152,12 @@ export class DocumentsService {
       await this.assertCategoryOwned(ownerId, categoryId);
     }
     const position = await this.nextPosition(ownerId, categoryId);
-    return this.prisma.document.update({
+    const doc = await this.prisma.document.update({
       where: { id },
       data: { categoryId, position },
-      select: fullSelect,
+      select: fullQuerySelect,
     });
+    return this.toFull(doc);
   }
 
   /** Envia el documento a la papelera (soft-delete). */
@@ -169,6 +196,12 @@ export class DocumentsService {
   }
 
   // ---------------- helpers ----------------
+
+  /** Aplana los vinculos de tags de la fila: `[{tag}]` -> `[tag]`. */
+  private toFull(doc: DocumentFullRow): DocumentFull {
+    const { tags, ...rest } = doc;
+    return { ...rest, tags: tags.map((link) => link.tag) };
+  }
 
   private async assertOwned(ownerId: string, id: string): Promise<void> {
     const doc = await this.prisma.document.findFirst({

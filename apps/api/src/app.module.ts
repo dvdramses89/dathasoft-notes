@@ -6,6 +6,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { CategoriesModule } from './categories/categories.module';
 import { DocumentsModule } from './documents/documents.module';
+import { TagsModule } from './tags/tags.module';
 
 @Module({
   imports: [
@@ -21,6 +22,8 @@ import { DocumentsModule } from './documents/documents.module';
     CategoriesModule,
     // Documentos (notas dentro de las carpetas)
     DocumentsModule,
+    // Tags transversales y su vinculo con los documentos
+    TagsModule,
   ],
   controllers: [HealthController],
 })

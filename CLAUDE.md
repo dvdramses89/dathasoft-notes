@@ -76,7 +76,8 @@ dathasoft-notes/
 │   │       ├── users/          ← módulo SIN controller
 │   │       ├── auth/           ← + decorators/ guards/ strategies/
 │   │       ├── categories/
-│   │       └── documents/
+│   │       ├── documents/
+│   │       └── tags/          ← DOS controllers: /tags y /documents/:id/tags
 │   └── web/
 │       ├── index.html · vite.config.ts · postcss.config.cjs
 │       └── src/
@@ -99,8 +100,8 @@ Cada módulo de dominio usa `X.module.ts` + `X.controller.ts` + `X.service.ts` +
 
 **13 modelos + 2 enums**, creados en una única migración `20260726225224_init`.
 
-- `User` · `Category` (árbol) · `Document` — los tres con módulo NestJS.
-- `Tag`, `DocumentTag`, `Favorite`, `Attachment`, `DocumentReference`, `Collective`, `CollectiveMember`, `DocumentShare`, `CategoryShare` — **las tablas ya existen, pero aún no tienen módulo**: se construirán en las fases 5-9.
+- `User` · `Category` (árbol) · `Document` · `Tag` + `DocumentTag` — con módulo NestJS (los dos últimos comparten el módulo `tags`).
+- `Favorite`, `Attachment`, `DocumentReference`, `Collective`, `CollectiveMember`, `DocumentShare`, `CategoryShare` — **las tablas ya existen, pero aún no tienen módulo**: se construirán en las fases 6-9.
 - Enums: `MemberRole {MEMBER, ADMIN}`, `SharePermission {READ, EDIT}`.
 - PK `uuid` nativo, soft-delete solo en `Category` y `Document`, y búsqueda full-text con una columna `searchVector` generada por la propia BD.
 
@@ -132,7 +133,8 @@ Se cargan **solas** al leer o editar un fichero de ese directorio, así que no o
 |---|---|
 | `apps/api/src/auth/CLAUDE.md` | Flujo registro/login/me, `JwtPayload`, `@CurrentUser()`, `toPublicUser()` |
 | `apps/api/src/categories/CLAUDE.md` | Árbol, semántica `subtree` vs `single`, ciclos, contrato de `reorder` |
-| `apps/api/src/documents/CLAUDE.md` | `fullSelect`/`listSelect`, tri-estado de `?categoryId`, `contentJson`/`contentText` |
+| `apps/api/src/documents/CLAUDE.md` | `fullSelect`/`listSelect`, tri-estado de `?categoryId`, `contentJson`/`contentText`, tags en las respuestas |
+| `apps/api/src/tags/CLAUDE.md` | Asignación por nombre, unicidad sin distinguir mayúsculas, quitar vs borrar |
 | `apps/api/src/prisma/CLAUDE.md` | `PrismaModule` global, única puerta a la BD |
 | `apps/web/src/lib/CLAUDE.md` | Cliente API: `request<T>()`, token, `ApiError`, tipos |
 | `apps/web/src/documents/CLAUDE.md` | Editor BlockNote, autoguardado, cache de documentos |
@@ -161,7 +163,7 @@ Toda la configuración entorno-dependiente vive en ficheros `.env`. **Nunca se h
 
 ## Estado y documentos relacionados
 
-Fases **0-4 cerradas**, más el endurecimiento de seguridad de la **Fase 4.5** y el rediseño visual de la **Fase 4.6**. La siguiente es la **Fase 5** (tags + buscador).
+Fases **0-4 cerradas**, más el endurecimiento de seguridad de la **Fase 4.5** y el rediseño visual de la **Fase 4.6**. La **Fase 5** (tags + buscador) está **en curso**: hecha la API de tags, pendientes la UI y el buscador.
 
 | Documento | Para qué |
 |---|---|
@@ -177,7 +179,8 @@ Fases **0-4 cerradas**, más el endurecimiento de seguridad de la **Fase 4.5** y
 - **Editor BlockNote** con Markdown y resaltado de código multi-lenguaje. — **[hecho]**
 - **Autenticación** de usuarios con JWT. — **[hecho]**
 - **Tema claro y oscuro** con interruptor. — **[hecho]**
-- **Tags** transversales y **buscador global** (título + `contentText`, full-text de Postgres, combinable con tags). — *[Fase 5]*
+- **Tags** transversales: gestión propia (nombre + color, con contador de uso) y asignación a documentos por nombre. **API hecha, sin UI todavía** — *[UI en la Fase 5.2]*.
+- **Buscador global** (título + `contentText`, full-text de Postgres, combinable con tags). — *[Fase 5.3]*
 - **Favoritos** por usuario, con su sección en el sidebar. — *[Fase 6]*
 - **Papelera**: borrado suave con restaurar / borrar definitivo. — *[Fase 6]*
 - **Referenciar fuentes** en los documentos mediante bloques custom: enlace web, embed de YouTube, documento interno y adjunto de archivo. — *[Fase 7]*

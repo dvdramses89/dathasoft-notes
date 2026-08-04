@@ -20,17 +20,36 @@ documents/
 
 ### `fullSelect` vs `listSelect`
 
-Hay **tres proyecciones** declaradas al principio del servicio, tipadas con `satisfies Prisma.DocumentSelect`, y sus tipos de respuesta se derivan de ellas:
+Hay **cuatro proyecciones** declaradas al principio del servicio, tipadas con `satisfies Prisma.DocumentSelect`, y sus tipos de respuesta se derivan de ellas. Van por parejas: una describe **la forma de la respuesta**, la otra **lo que se pide a la BD**.
 
-| Proyección | Incluye | Se usa en |
+| Proyección | Incluye | Papel |
 |---|---|---|
-| `fullSelect` → `DocumentFull` | Todo, **con `contentJson` y `contentText`** | `create`, `findOne`, `update`, `move` |
-| `listSelect` | Sin el contenido | Es la **forma de la respuesta** de `list` |
-| `listQuerySelect` | `listSelect` + `contentText` | Es lo que se **pide a la BD** en `list` |
+| `fullSelect` | Todo, **con `contentJson` y `contentText`** | Base del tipo `DocumentFull` |
+| `fullQuerySelect` | `fullSelect` + los vínculos de tags | Lo que se **pide a la BD** en `create`, `findOne`, `update`, `move` |
+| `listSelect` | Sin el contenido | Base del tipo `DocumentListItem` |
+| `listQuerySelect` | `listSelect` + `contentText` + tags | Lo que se **pide a la BD** en `list` |
 
 NORMA: **los listados nunca devuelven `contentJson`.** Un documento largo pesa mucho y el sidebar solo necesita título y posición. Si añades un endpoint de listado, usa `listSelect`.
 
-Ninguna de las tres incluye `ownerId` ni `deletedAt`.
+Ninguna de las cuatro incluye `ownerId` ni `deletedAt`.
+
+### Los tags viajan en todas las respuestas
+
+Los dos tipos de salida llevan `tags: TagItem[]`, así que **cualquier respuesta de este módulo trae los tags del documento** — el detalle, el listado, el autoguardado y el move. Un documento recién creado trae `tags: []`.
+
+```ts
+const tagsRelation = {
+  select: { tag: { select: tagSelect } },
+  orderBy: { tag: { name: 'asc' } },
+} as const;
+```
+
+- El `as const` **no es decorativo**: sin él, `'asc'` se ensancharía a `string` y el `satisfies Prisma.DocumentSelect` fallaría.
+- La consulta devuelve la tabla pivote (`[{tag: {...}}]`), así que se **aplana antes de responder**: `toFull()` para el detalle, el propio `map` de `list()` para el listado. NORMA: la API devuelve los tags directamente, nunca la forma anidada de `DocumentTag`.
+- `tagSelect` y `TagItem` **se importan de `../tags/tags.service`**, para que el contrato del tag exista en un solo sitio. Es un import de tipo y de una constante: los dos módulos NestJS siguen sin conocerse.
+- Ordenados por nombre desde la BD, no en memoria.
+
+Añadir o quitar tags **no se hace desde este módulo**: está en `/api/documents/:documentId/tags`, que vive en `apps/api/src/tags/`.
 
 ### `excerpt`: por qué hay dos selects para un listado
 
@@ -89,6 +108,8 @@ Todos bajo `@UseGuards(JwtAuthGuard)` a nivel de clase.
 
 `reorder` **debe declararse antes que `:id`**. El `PATCH /:id` es el que recibe el autoguardado del editor, así que es el endpoint más llamado de la API.
 
+Bajo `/api/documents/:documentId/tags` hay tres endpoints más, pero **son del módulo `tags`** (`DocumentTagsController`). No colisionan con `GET /api/documents/:id`: tienen un segmento más.
+
 ## Modelo / Entidades
 
 `Document`, con `categoryId` opcional (`onDelete: SetNull`), soft-delete, orden manual (`position`) y la columna generada `searchVector` con índice GIN. Detalle en `.claude/rules/database.md`.
@@ -104,7 +125,7 @@ Todos bajo `@UseGuards(JwtAuthGuard)` a nivel de clase.
 ## Cómo verificar el módulo
 
 1. **Crear** un documento en la raíz y otro dentro de una carpeta.
-2. **Listar sin filtro** → salen todos, **sin `contentJson` ni `contentText`**, y **con `excerpt`**. Con un documento de más de 240 caracteres, el extracto acaba en `…` y no parte una palabra.
+2. **Listar sin filtro** → salen todos, **sin `contentJson` ni `contentText`**, y **con `excerpt`** y `tags`. Con un documento de más de 240 caracteres, el extracto acaba en `…` y no parte una palabra.
 3. **`?categoryId=root`** → solo los de la raíz. **`?categoryId=<uuid>`** → solo los de esa carpeta. **`?categoryId=loquesea`** → 400.
 4. **`GET /:id`** → sí trae `contentJson` y `contentText`.
 5. **Guardar** con `PATCH /:id` — simular el autoguardado del editor y comprobar que `updatedAt` cambia.
