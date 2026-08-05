@@ -6,6 +6,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { CategoriesModule } from './categories/categories.module';
 import { DocumentsModule } from './documents/documents.module';
+import { FavoritesModule } from './favorites/favorites.module';
 import { TagsModule } from './tags/tags.module';
 
 @Module({
@@ -24,6 +25,8 @@ import { TagsModule } from './tags/tags.module';
     DocumentsModule,
     // Tags transversales y su vinculo con los documentos
     TagsModule,
+    // Favoritos del usuario sobre sus documentos
+    FavoritesModule,
   ],
   controllers: [HealthController],
 })

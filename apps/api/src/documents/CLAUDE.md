@@ -22,12 +22,18 @@ documents/
 
 Hay **cuatro proyecciones** declaradas al principio del servicio, tipadas con `satisfies Prisma.DocumentSelect`, y sus tipos de respuesta se derivan de ellas. Van por parejas: una describe **la forma de la respuesta**, la otra **lo que se pide a la BD**.
 
-| Proyección | Incluye | Papel |
-|---|---|---|
-| `fullSelect` | Todo, **con `contentJson` y `contentText`** | Base del tipo `DocumentFull` |
-| `fullQuerySelect` | `fullSelect` + los vínculos de tags | Lo que se **pide a la BD** en `create`, `findOne`, `update`, `move` |
-| `listSelect` | Sin el contenido | Base del tipo `DocumentListItem` |
-| `listQuerySelect` | `listSelect` + `contentText` + tags | Lo que se **pide a la BD** en `list` |
+| Proyección | Forma | Incluye | Papel |
+|---|---|---|---|
+| `fullSelect` | constante | Todo, **con `contentJson` y `contentText`** | Base del tipo `DocumentFull` |
+| `fullQuerySelect(ownerId)` | **función** | `fullSelect` + tags + favorito | Lo que se **pide a la BD** en `create`, `findOne`, `update`, `move` |
+| `listSelect` | constante | Sin el contenido | Base del tipo `DocumentListItem` |
+| `listQuerySelect(ownerId)` | **función** | `listSelect` + `contentText` + tags + favorito | Lo que se **pide a la BD** en `list`, `search` y `listByIds` |
+
+NORMA: **las dos de consulta son funciones de `ownerId`, no constantes**, porque la marca de favorito se filtra por el usuario que consulta (ver más abajo). Sus tipos de fila se derivan con `ReturnType<typeof …>`:
+
+```ts
+type DocumentFullRow = Prisma.DocumentGetPayload<{ select: ReturnType<typeof fullQuerySelect> }>;
+```
 
 NORMA: **los listados nunca devuelven `contentJson`.** Un documento largo pesa mucho y el sidebar solo necesita título y posición. Si añades un endpoint de listado, usa `listSelect`.
 
@@ -51,6 +57,30 @@ const tagsRelation = {
 
 Añadir o quitar tags **no se hace desde este módulo**: está en `/api/documents/:documentId/tags`, que vive en `apps/api/src/tags/`.
 
+### `isFavorite` también viaja en todas las respuestas
+
+Igual que los tags: los dos tipos de salida llevan `isFavorite: boolean`, así que lo traen el detalle, el listado, el buscador, el autoguardado y el move.
+
+```ts
+function favoritesOf(ownerId: string) {
+  return { where: { userId: ownerId }, select: { userId: true } } as const;
+}
+```
+
+- NORMA: el `where` por `userId` **no es redundante**. Hoy solo el dueño puede marcar un documento, pero cuando la Fase 9 permita ver documentos ajenos, el favorito de otro usuario no debe contar como propio. Es lo que obliga a que las proyecciones de consulta sean funciones.
+- Se pide como relación filtrada, así que **no cuesta ninguna consulta extra**: viene en el mismo `SELECT`.
+- Se aplana a booleano antes de responder (`favorites.length > 0`), en `toFull()` y en `toListItems()`. La API **nunca devuelve la fila de `Favorite`**.
+
+Marcar y desmarcar **no se hace desde este módulo**: está en `/api/documents/:documentId/favorite`, que vive en `apps/api/src/favorites/`.
+
+### `listByIds()`: proyectar un orden que decide otro
+
+Método público sin endpoint propio. Devuelve `DocumentListItem[]` **en el mismo orden en que llegan los ids**, descartando en silencio los que estén en la papelera o sean de otro usuario.
+
+Existe para que `FavoritesService` pueda ordenar por la fecha de marcado —que solo conoce la tabla `Favorite`— sin duplicar aquí el `listSelect` ni el cálculo del extracto. Por eso `DocumentsModule` **exporta `DocumentsService`**.
+
+Es el mismo reparto que usa el buscador con sus `rankedIds`, y los dos comparten el helper `orderByIds()`.
+
 ### `excerpt`: por qué hay dos selects para un listado
 
 `GET /api/documents` devuelve un campo **`excerpt`** que no existe en la tabla: alimenta la vista previa de las tarjetas del front.
@@ -58,6 +88,8 @@ Añadir o quitar tags **no se hace desde este módulo**: está en `/api/document
 ```ts
 export type DocumentListItem = Prisma.DocumentGetPayload<{ select: typeof listSelect }> & {
   excerpt: string;
+  tags: TagItem[];
+  isFavorite: boolean;
 };
 ```
 
@@ -96,7 +128,7 @@ Se resuelve en **dos consultas**, y el reparto es deliberado:
      LIMIT ${SEARCH_LIMIT}`
    ```
    NORMA: **template tag, nunca `$queryRawUnsafe` ni concatenación** (regla 3 de `.claude/rules/security.md`). Devuelve **solo ids**: la proyección la hace Prisma después.
-2. **Todo lo demás va por Prisma**: el select de listado, los tags y el filtro por etiquetas. El orden de relevancia se reaplica en memoria con un mapa `id → posición`.
+2. **Todo lo demás va por Prisma**: el select de listado, los tags y el filtro por etiquetas. El orden de relevancia se reaplica en memoria con `orderByIds()`, un mapa `id → posición`.
 
 Reglas que se derivan:
 
@@ -137,7 +169,7 @@ Todos bajo `@UseGuards(JwtAuthGuard)` a nivel de clase.
 
 `search` y `reorder` **deben declararse antes que `:id`**. El `PATCH /:id` es el que recibe el autoguardado del editor, así que es el endpoint más llamado de la API.
 
-Bajo `/api/documents/:documentId/tags` hay tres endpoints más, pero **son del módulo `tags`** (`DocumentTagsController`). No colisionan con `GET /api/documents/:id`: tienen un segmento más.
+Bajo `/api/documents/:documentId` cuelgan **cinco endpoints que no son de este módulo**: los tres de `/tags` (`DocumentTagsController`, en `apps/api/src/tags/`) y los dos de `/favorite` (`DocumentFavoriteController`, en `apps/api/src/favorites/`). No colisionan con `GET /api/documents/:id`: tienen un segmento más.
 
 ## Modelo / Entidades
 
@@ -154,7 +186,8 @@ Bajo `/api/documents/:documentId/tags` hay tres endpoints más, pero **son del m
 ## Cómo verificar el módulo
 
 1. **Crear** un documento en la raíz y otro dentro de una carpeta.
-2. **Listar sin filtro** → salen todos, **sin `contentJson` ni `contentText`**, y **con `excerpt`** y `tags`. Con un documento de más de 240 caracteres, el extracto acaba en `…` y no parte una palabra.
+2. **Listar sin filtro** → salen todos, **sin `contentJson` ni `contentText`**, y **con `excerpt`**, `tags` e `isFavorite`. Con un documento de más de 240 caracteres, el extracto acaba en `…` y no parte una palabra.
+2b. **`isFavorite`** — está en las cinco respuestas (detalle, listado, buscador, `PATCH /:id` y `PATCH /:id/move`) y solo vale `true` en los documentos que el usuario ha marcado.
 3. **`?categoryId=root`** → solo los de la raíz. **`?categoryId=<uuid>`** → solo los de esa carpeta. **`?categoryId=loquesea`** → 400.
 4. **`GET /:id`** → sí trae `contentJson` y `contentText`.
 5. **Guardar** con `PATCH /:id` — simular el autoguardado del editor y comprobar que `updatedAt` cambia.

@@ -90,6 +90,6 @@ Reglas que se derivan de esto:
 
 ## Modelos sin módulo todavía
 
-7 de los 13 modelos existen en la BD pero **no tienen módulo NestJS**: `Favorite`, `Attachment`, `DocumentReference`, `Collective`, `CollectiveMember`, `DocumentShare`, `CategoryShare`. Los enums `MemberRole` y `SharePermission` tampoco tienen lógica asociada.
+6 de los 13 modelos existen en la BD pero **no tienen módulo NestJS**: `Attachment`, `DocumentReference`, `Collective`, `CollectiveMember`, `DocumentShare`, `CategoryShare`. Los enums `MemberRole` y `SharePermission` tampoco tienen lógica asociada.
 
 No es un olvido ni una deuda: el reparto por fases está en [PLAN.md](../../PLAN.md).
