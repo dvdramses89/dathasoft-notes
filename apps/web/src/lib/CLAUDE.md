@@ -52,8 +52,11 @@ Son el contrato con la API, y se importan desde aquí en todo el frontend:
 | `TreeMode` | `'subtree' \| 'single'` |
 | `Tag`, `TagWithCount` | `color` es un **nombre de color de Mantine**, o `null`. `TagWithCount` solo lo devuelve `GET /tags`, con `documentCount` |
 | `DocumentListItem`, `DocumentFull` | Reflejan `listSelect` / `fullSelect` del backend. **Ya no uno extiende al otro**: comparten un `DocumentBase` interno y luego divergen — el del listado lleva `excerpt`, el completo lleva `contentJson` + `contentText` |
+| `FavoriteState` | `{ favorite: boolean }`, lo que devuelven marcar y desmarcar |
 
-- `tags: Tag[]` está en **`DocumentBase`**, no en uno de los dos: la API los devuelve en las dos formas. Por eso `toListItem()` los conserva sin tocar nada — entran en el `...base` del spread.
+- `tags: Tag[]` e **`isFavorite: boolean`** están en **`DocumentBase`**, no en uno de los dos: la API los devuelve en las dos formas. Por eso `toListItem()` los conserva sin tocar nada — entran en el `...base` del spread.
+- **`isFavorite` no es la fuente de verdad de la estrella**, aunque venga en cada documento: lo es `FavoritesContext`, y este campo solo se usa como respaldo hasta que su lista carga. Ver `apps/web/src/favorites/CLAUDE.md`.
+- Las tres funciones de favoritos son las únicas que **no llevan body en un POST/DELETE**: el documento va en la ruta. Marcar y desmarcar son idempotentes en la API, así que quien llama no tiene que comprobar el estado previo.
 - **Vincular un tag va por nombre** (`attachTag(documentId, name)`), no por id, y devuelve **la lista completa** de tags del documento. Quitar (`detachTag`) devuelve `{ removed }`, así que quien llama actualiza su estado por su cuenta.
 - **`searchDocuments(q, tagIds)`** monta la query con `URLSearchParams` y **omite los parámetros vacíos**, para no mandar `?q=&tagIds=`. Exporta también `SEARCH_LIMIT = 50`, que **duplica el tope de la API a propósito**: es la única forma de que `SearchPage` sepa que el resultado se ha cortado, porque la respuesta es un array plano sin total. Si cambia en el backend, hay que cambiarlo aquí.
 

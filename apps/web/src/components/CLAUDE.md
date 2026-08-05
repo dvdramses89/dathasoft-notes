@@ -26,7 +26,7 @@ main.tsx        MantineProvider > BrowserRouter > AuthProvider > App
 App.tsx         Routes
                 └─ ProtectedRoute (layout route SIN path)
                    └─ AppLayout
-                      └─ CategoriesProvider > DocumentsProvider
+                      └─ CategoriesProvider > DocumentsProvider > TagsProvider > FavoritesProvider
                          └─ AppShell: Header(AppHeader) + Navbar(Sidebar) + Main(<Outlet/>)
 ```
 
@@ -51,6 +51,8 @@ App.tsx         Routes
 
 El componente grande. Contiene el árbol de carpetas, los documentos de cada una, y todas sus acciones.
 
+Por encima del árbol monta **`<FavoritesSection/>`**, que vive en `apps/web/src/favorites/` y **se pinta sola solo si hay favoritos**. Está ahí y no dentro de este fichero a propósito: así el sidebar no gana ni un `useState` más (ver la DEUDA de estado más abajo).
+
 ### Patrones propios
 
 - **`TreeItem` es recursivo**: se renderiza a sí mismo para las hijas y reenvía las props con spread. Es lo que produce los N niveles.
@@ -58,6 +60,7 @@ El componente grande. Contiene el árbol de carpetas, los documentos de cada una
 - **Las acciones de fila van en un menú** (`RowMenu`, un `Menu` de Mantine tras un botón de tres puntos), no en botones sueltos. Aparece al pasar el ratón (`.tree-row-actions`), y en pantallas táctiles se queda visible.
 - NORMA: `RowMenu` monta su `Menu.Target` como `ActionIcon component="div" role="button"`. **Es a propósito**: la fila entera ya es un `<div>` clicable y un `<button>` dentro de otro es HTML inválido.
 - **Edición en línea**: renombrar carpetas y documentos usa un `TextInput` en el sitio, no un diálogo. **Crear** carpeta sí usa diálogo, porque además pide icono y color.
+- **`DocItem` llama a `useFavorites()` por su cuenta** para pintar su entrada de menú «Añadir/Quitar de favoritos». No llega por props ni por `docActions`: `TreeItem` es recursivo y habría que arrastrar el dato por todos los niveles.
 - El **contador de documentos** solo se pinta con la carpeta cerrada: abierta ya se ven.
 
 ### Drag & drop

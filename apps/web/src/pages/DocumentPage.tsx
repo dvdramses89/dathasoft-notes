@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { DocumentEditor } from '../documents/DocumentEditor';
 import { useDocuments } from '../documents/DocumentsContext';
+import { FavoriteStar } from '../favorites/FavoriteStar';
 import { TagPicker } from '../tags/TagPicker';
 import { getDocument, toListItem, updateDocument, type DocumentFull, type Tag } from '../lib/api';
 
@@ -216,9 +217,10 @@ export function DocumentPage() {
               }
             }}
           />
-          <Box style={{ flex: 'none' }}>
+          <Group style={{ flex: 'none' }} gap="xs" wrap="nowrap">
             <SaveIndicator state={saveState} />
-          </Box>
+            <FavoriteStar documentId={doc.id} fallback={doc.isFavorite} />
+          </Group>
         </Group>
 
         {/* Los tags van entre el titulo y el editor: se ven al abrir el

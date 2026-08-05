@@ -238,6 +238,12 @@ interface DocumentBase {
   updatedAt: string;
   /** Tags del documento, ordenados por nombre. Vienen en las dos formas. */
   tags: Tag[];
+  /**
+   * Si el usuario lo tiene marcado como favorito. Viene en las dos formas, pero
+   * la fuente de verdad para pintar la estrella es `FavoritesContext`: este
+   * campo solo se usa mientras su lista no ha llegado.
+   */
+  isFavorite: boolean;
 }
 
 /** Documento en un listado: sin el contenido, con un extracto para la vista previa. */
@@ -343,6 +349,28 @@ export function reorderDocuments(
     method: 'PATCH',
     body: JSON.stringify({ categoryId, orderedIds }),
   });
+}
+
+// ---------------- Favoritos ----------------
+
+/** Las dos operaciones devuelven el estado final, no un contador. */
+export interface FavoriteState {
+  favorite: boolean;
+}
+
+/** Documentos favoritos, del último marcado al primero. Sin los de la papelera. */
+export function getFavorites(): Promise<DocumentListItem[]> {
+  return request<DocumentListItem[]>('/favorites');
+}
+
+/** Idempotente: marcar algo que ya era favorito no falla. */
+export function addFavorite(documentId: string): Promise<FavoriteState> {
+  return request<FavoriteState>(`/documents/${documentId}/favorite`, { method: 'POST' });
+}
+
+/** Idempotente: desmarcar algo que no era favorito tampoco falla. */
+export function removeFavorite(documentId: string): Promise<FavoriteState> {
+  return request<FavoriteState>(`/documents/${documentId}/favorite`, { method: 'DELETE' });
 }
 
 export { API_URL };

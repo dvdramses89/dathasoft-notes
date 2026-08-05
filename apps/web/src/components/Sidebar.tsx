@@ -24,6 +24,8 @@ import {
   IconPalette,
   IconPencil,
   IconPlus,
+  IconStar,
+  IconStarFilled,
   IconTrash,
 } from '@tabler/icons-react';
 import { useEffect, useState, type DragEvent, type ReactNode } from 'react';
@@ -31,6 +33,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useCategories } from '../categories/CategoriesContext';
 import { FolderIcon } from '../categories/folderIcons';
 import { useDocuments } from '../documents/DocumentsContext';
+import { useFavorites } from '../favorites/FavoritesContext';
+import { FavoritesSection } from '../favorites/FavoritesSection';
 import type { CategoryNode, DocumentListItem, TreeMode } from '../lib/api';
 import { FolderFormModal, type FolderLook } from './FolderFormModal';
 import { MoveDocumentModal } from './MoveDocumentModal';
@@ -138,6 +142,10 @@ interface DocItemProps {
 /** Fila de documento dentro del arbol. */
 function DocItem(props: DocItemProps) {
   const { doc, depth, active, editing, dragDocId, dropIndicator } = props;
+  // El favorito se consulta aqui, y no llega por props: si no, habria que
+  // arrastrarlo por todos los niveles de la recursion de TreeItem.
+  const { isFavorite, toggle: toggleFavorite } = useFavorites();
+  const marked = isFavorite(doc.id, doc.isFavorite);
   const isDragging = dragDocId === doc.id;
   const dropBefore = dropIndicator?.id === doc.id && dropIndicator.pos === 'before';
   const dropAfter = dropIndicator?.id === doc.id && dropIndicator.pos === 'after';
@@ -199,6 +207,18 @@ function DocItem(props: DocItemProps) {
                   onClick={() => props.onRequestMove(doc)}
                 >
                   Mover a…
+                </Menu.Item>
+                <Menu.Item
+                  leftSection={
+                    marked ? (
+                      <IconStarFilled size={15} color="var(--mantine-color-yellow-6)" />
+                    ) : (
+                      <IconStar size={15} />
+                    )
+                  }
+                  onClick={() => void toggleFavorite(doc.id)}
+                >
+                  {marked ? 'Quitar de favoritos' : 'Añadir a favoritos'}
                 </Menu.Item>
                 <Menu.Divider />
                 <Menu.Item
@@ -425,6 +445,7 @@ export function Sidebar() {
     remove: removeDoc,
     reorder: reorderDocs,
   } = useDocuments();
+  const { reload: reloadFavorites } = useFavorites();
   const navigate = useNavigate();
   const { id: openDocId } = useParams();
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -548,6 +569,7 @@ export function Sidebar() {
     }
     await removeDoc(doc.id, doc.categoryId);
     await reloadTree(); // el contador de la carpeta baja
+    await reloadFavorites(); // si era favorito, sale de la seccion
     // Si el documento borrado era el que estaba abierto, salimos de su ruta.
     if (openDocId === doc.id) {
       navigate('/');
@@ -702,6 +724,9 @@ export function Sidebar() {
       </div>
 
       <Divider my={2} />
+
+      {/* Se pinta sola cuando hay favoritos; si no, no ocupa nada. */}
+      <FavoritesSection />
 
       <Group justify="space-between" px={6} gap="xs">
         <Text size="xs" fw={600} c="dimmed" tt="uppercase">

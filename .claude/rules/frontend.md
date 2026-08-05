@@ -17,6 +17,7 @@ src/
 ├── categories/   ← feature: CategoriesContext, folderIcons
 ├── documents/    ← feature: DocumentEditor, DocumentsContext, codeBlock
 ├── tags/         ← feature: TagsContext, TagChips, TagPicker
+├── favorites/    ← feature: FavoritesContext, FavoriteStar, FavoritesSection
 ├── components/   ← técnica: AppLayout, AppHeader, ProtectedRoute, Sidebar, modales
 ├── lib/          ← técnica: api.ts
 └── pages/        ← técnica: Home, Search, Document, Login, Register
@@ -64,16 +65,18 @@ export function useCategories() {
 }
 ```
 
-Los tres hooks (`useAuth`, `useCategories`, `useDocuments`) viven **junto a su Provider**, no en una carpeta `hooks/`.
+Los cinco hooks (`useAuth`, `useCategories`, `useDocuments`, `useTags`, `useFavorites`) viven **junto a su Provider**, no en una carpeta `hooks/`.
 
 Dónde se monta cada uno:
 
 - `MantineProvider` y `AuthContext` — en `main.tsx`, envuelven toda la app (las páginas de login las necesitan).
-- `CategoriesContext`, `DocumentsContext` y `TagsContext` — en `AppLayout`, es decir **dentro de la zona protegida**. No se cargan datos si no hay sesión.
+- `CategoriesContext`, `DocumentsContext`, `TagsContext` y `FavoritesContext` — en `AppLayout`, es decir **dentro de la zona protegida**. No se cargan datos si no hay sesión.
 
-Cada Context tiene su propia política de refresco, y las tres conviven a propósito: `CategoriesContext` **recarga el árbol entero** tras cada mutación, `DocumentsContext` hace **actualizaciones optimistas** sobre su cache, y `TagsContext` recarga el catálogo (es pequeño) pero además ofrece `resolve()` para que los datos ya pintados no envejezcan. Ver `apps/web/src/tags/CLAUDE.md`.
+Cada Context tiene su propia política de refresco, y las cuatro conviven a propósito: `CategoriesContext` **recarga el árbol entero** tras cada mutación, `DocumentsContext` hace **actualizaciones optimistas** sobre su cache, `TagsContext` recarga el catálogo (es pequeño) pero además ofrece `resolve()` para que los datos ya pintados no envejezcan, y `FavoritesContext` combina las dos: marca de forma optimista y recarga después.
 
-DEUDA: los tres hooks llevan `// eslint-disable-next-line react-refresh/only-export-components`, que hoy **no hace nada** porque no hay ESLint configurado. No los borres: volverían a hacer falta si algún día se añade.
+NORMA: **`TagsContext` y `FavoritesContext` son la fuente de verdad de lo suyo**, por encima de lo que traiga cada documento. `resolve(tags)` e `isFavorite(id, fallback)` existen para lo mismo: que un cambio se vea al instante en los listados ya cargados **sin volver a pedirlos**. El campo que viene con el documento solo se usa mientras el contexto no ha cargado. No añadas un refresco global a `DocumentsContext` para esto.
+
+DEUDA: los cinco hooks llevan `// eslint-disable-next-line react-refresh/only-export-components`, que hoy **no hace nada** porque no hay ESLint configurado. No los borres: volverían a hacer falta si algún día se añade.
 
 ## Cliente API
 

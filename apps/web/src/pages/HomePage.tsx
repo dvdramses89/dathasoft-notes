@@ -34,6 +34,8 @@ import { useNavigate } from 'react-router-dom';
 import { useCategories } from '../categories/CategoriesContext';
 import { FolderIcon } from '../categories/folderIcons';
 import { useDocuments } from '../documents/DocumentsContext';
+import { FavoriteStar } from '../favorites/FavoriteStar';
+import { useFavorites } from '../favorites/FavoritesContext';
 import type { CategoryNode, DocumentListItem } from '../lib/api';
 import { TagChips } from '../tags/TagChips';
 import { DestinationPicker, type Destination } from '../components/DestinationPicker';
@@ -83,6 +85,7 @@ export function HomePage() {
     remove: removeDoc,
     move: moveDoc,
   } = useDocuments();
+  const { reload: reloadFavorites } = useFavorites();
 
   const [view, setView] = useLocalStorage<ViewMode>({
     key: 'dtnotes_view_mode',
@@ -158,6 +161,8 @@ export function HomePage() {
         }
       }
       await reloadTree();
+      // Lo que se va a la papelera sale de la seccion de favoritos.
+      await reloadFavorites();
       setPicked([]);
       setBulkDelete(false);
     } finally {
@@ -403,6 +408,14 @@ export function HomePage() {
                         <Text size="xs" c="dimmed" style={{ flex: 'none' }} visibleFrom="xs">
                           {formatDate(doc.updatedAt)}
                         </Text>
+                        <Box style={{ flex: 'none' }}>
+                          <FavoriteStar
+                            documentId={doc.id}
+                            fallback={doc.isFavorite}
+                            size="sm"
+                            iconSize={15}
+                          />
+                        </Box>
                       </Box>
                     ))}
                   </Paper>
@@ -428,14 +441,24 @@ export function HomePage() {
                             <Text fw={600} size="sm" lineClamp={2}>
                               {doc.title}
                             </Text>
-                            <Checkbox
-                              size="xs"
-                              radius="xl"
-                              checked={isPicked}
-                              aria-label={`Seleccionar ${doc.title}`}
-                              onClick={(e) => e.stopPropagation()}
-                              onChange={() => togglePick({ kind: 'doc', id: doc.id })}
-                            />
+                            {/* La estrella va junto al checkbox: la esquina de
+                                la tarjeta ya era la zona de sus controles. */}
+                            <Group gap={2} wrap="nowrap" style={{ flex: 'none' }}>
+                              <FavoriteStar
+                                documentId={doc.id}
+                                fallback={doc.isFavorite}
+                                size="sm"
+                                iconSize={15}
+                              />
+                              <Checkbox
+                                size="xs"
+                                radius="xl"
+                                checked={isPicked}
+                                aria-label={`Seleccionar ${doc.title}`}
+                                onClick={(e) => e.stopPropagation()}
+                                onChange={() => togglePick({ kind: 'doc', id: doc.id })}
+                              />
+                            </Group>
                           </Group>
                           <Text size="xs" c="dimmed" mt={2}>
                             {formatDate(doc.updatedAt)}
