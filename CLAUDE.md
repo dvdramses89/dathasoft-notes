@@ -47,6 +47,7 @@ Desde **`apps/api`**: `npm run prisma:generate`, `prisma:migrate` (= `prisma mig
 | Base de datos | **PostgreSQL 16** (Docker en local) |
 | Autenticación | **JWT + Passport** dentro de la propia API |
 | Endurecimiento | **`helmet`** (cabeceras) + **`@nestjs/throttler`** (rate limiting solo en login y registro) |
+| Tareas programadas | **`@nestjs/schedule`** — una sola: la purga diaria de la papelera |
 | Repo / IDE | GitHub (`https://github.com/dvdramses89/dathasoft-notes.git`) + VS Code |
 | Despliegue | **Zeabur** — decidido pero **aún sin configurar** (Fase 11) |
 
@@ -78,7 +79,8 @@ dathasoft-notes/
 │   │       ├── categories/
 │   │       ├── documents/
 │   │       ├── tags/          ← DOS controllers: /tags y /documents/:id/tags
-│   │       └── favorites/     ← DOS controllers: /favorites y /documents/:id/favorite
+│   │       ├── favorites/     ← DOS controllers: /favorites y /documents/:id/favorite
+│   │       └── trash/         ← papelera + la unica tarea programada (purga diaria)
 │   └── web/
 │       ├── index.html · vite.config.ts · postcss.config.cjs
 │       └── src/
@@ -139,6 +141,7 @@ Se cargan **solas** al leer o editar un fichero de ese directorio, así que no o
 | `apps/api/src/documents/CLAUDE.md` | `fullSelect`/`listSelect`, tri-estado de `?categoryId`, `contentJson`/`contentText`, tags y `isFavorite` en las respuestas |
 | `apps/api/src/tags/CLAUDE.md` | Asignación por nombre, unicidad sin distinguir mayúsculas, quitar vs borrar |
 | `apps/api/src/favorites/CLAUDE.md` | Idempotencia de marcar/desmarcar, orden por fecha de marcado, favoritos y papelera |
+| `apps/api/src/trash/CLAUDE.md` | Lote de borrado, restaurar a la raíz, borrado físico y purga diaria |
 | `apps/api/src/prisma/CLAUDE.md` | `PrismaModule` global, única puerta a la BD |
 | `apps/web/src/lib/CLAUDE.md` | Cliente API: `request<T>()`, token, `ApiError`, tipos |
 | `apps/web/src/documents/CLAUDE.md` | Editor BlockNote, autoguardado, cache de documentos |
@@ -160,7 +163,7 @@ Toda la configuración entorno-dependiente vive en ficheros `.env`. **Nunca se h
 | Fichero | Claves |
 |---|---|
 | `.env` (raíz) | `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `POSTGRES_PORT` — solo para docker-compose |
-| `apps/api/.env` | `PORT`, `NODE_ENV`, `DATABASE_URL`, `JWT_SECRET`, `JWT_EXPIRES_IN`, `CORS_ORIGINS`, `THROTTLE_*` |
+| `apps/api/.env` | `PORT`, `NODE_ENV`, `DATABASE_URL`, `JWT_SECRET`, `JWT_EXPIRES_IN`, `CORS_ORIGINS`, `THROTTLE_*`, `TRASH_RETENTION_DAYS` |
 | `apps/web/.env` | `VITE_API_URL` |
 
 - Generar un `JWT_SECRET`: `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"`.
@@ -170,7 +173,7 @@ Toda la configuración entorno-dependiente vive en ficheros `.env`. **Nunca se h
 
 ## Estado y documentos relacionados
 
-Fases **0-4 cerradas**, más el endurecimiento de seguridad de la **Fase 4.5** y el rediseño visual de la **Fase 4.6**. Cerrada también la **Fase 5** (tags + buscador global). En curso la **Fase 6** (favoritos + papelera): los **favoritos** están completos de punta a punta (6.1); queda la **papelera** (6.2).
+Fases **0-4 cerradas**, más el endurecimiento de seguridad de la **Fase 4.5** y el rediseño visual de la **Fase 4.6**. Cerrada también la **Fase 5** (tags + buscador global). En curso la **Fase 6**: los **favoritos** están completos (6.1) y la **API de la papelera** también (6.2.a); queda su interfaz (6.2.b).
 
 | Documento | Para qué |
 |---|---|
@@ -189,7 +192,7 @@ Fases **0-4 cerradas**, más el endurecimiento de seguridad de la **Fase 4.5** y
 - **Tags** transversales: se asignan escribiendo el nombre en el documento (se crean solos), se ven como chips en la vista de carpeta y se gestionan —nombre, color, eliminar— en el diálogo «Etiquetas» del menú de cuenta. — **[hecho]**
 - **Buscador global** en la cabecera (Ctrl+K): full-text de Postgres sobre título y contenido, ordenado por relevancia, combinable con **filtro por tags en modo Y**. La búsqueda vive en la URL (`/search?q=&tags=`). — **[hecho]**
 - **Favoritos** por usuario: estrella en la hoja del documento, en la vista de carpeta y en el menú del sidebar, con una sección «Favoritos» arriba del árbol que **solo aparece si hay alguno**, ordenada del último marcado al primero. — **[hecho]**
-- **Papelera**: borrado suave con restaurar / borrar definitivo. — *[Fase 6]*
+- **Papelera** de documentos **y carpetas**: restaurar (una carpeta vuelve con todo lo que se borró con ella), borrar definitivo y vaciar. Lo que lleva más de 30 días se purga solo. — *API hecha (6.2.a); interfaz en la 6.2.b*
 - **Referenciar fuentes** en los documentos mediante bloques custom: enlace web, embed de YouTube, documento interno y adjunto de archivo. — *[Fase 7]*
 - **Exportar** a Markdown y PDF; **importar** `.md` / `.txt` / `.docx` eligiendo carpeta destino. — *[Fase 8]*
 - **Colectivos**: agrupar usuarios y compartir con ellos documentos sueltos o carpetas enteras (comparte el subárbol), con permiso read/edit y sección "Documentos compartidos" en el sidebar. — *[Fase 9]*

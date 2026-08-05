@@ -8,6 +8,7 @@ import { CategoriesModule } from './categories/categories.module';
 import { DocumentsModule } from './documents/documents.module';
 import { FavoritesModule } from './favorites/favorites.module';
 import { TagsModule } from './tags/tags.module';
+import { TrashModule } from './trash/trash.module';
 
 @Module({
   imports: [
@@ -27,6 +28,8 @@ import { TagsModule } from './tags/tags.module';
     TagsModule,
     // Favoritos del usuario sobre sus documentos
     FavoritesModule,
+    // Papelera: restaurar, borrar definitivo y purga automatica
+    TrashModule,
   ],
   controllers: [HealthController],
 })

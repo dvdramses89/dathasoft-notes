@@ -25,10 +25,19 @@ categories/
 
 | Modo | Al **mover** | Al **borrar** |
 |---|---|---|
-| `SUBTREE` (default) | La carpeta se lleva consigo toda su estructura | Se borran la carpeta y todo su subárbol |
-| `SINGLE` | Solo esa carpeta cambia de sitio; **sus hijas directas suben a colgar del padre de origen** | Solo esa carpeta; **sus hijas suben al padre de origen** |
+| `SUBTREE` (default) | La carpeta se lleva consigo toda su estructura | Se borran la carpeta, todo su subárbol **y los documentos de todas ellas** |
+| `SINGLE` | Solo esa carpeta cambia de sitio; **sus hijas directas suben a colgar del padre de origen** | Solo esa carpeta; **sus hijas y sus documentos suben al padre de origen** |
 
 En ambos casos, `SINGLE` **desvincula las hijas antes** de tocar la carpeta (`updateMany` sobre `parentId`).
+
+### Borrar una carpeta decide también qué pasa con sus documentos
+
+NORMA: **ninguna vía puede dejar un documento vivo colgando de una carpeta borrada.** Sería invisible — no está en el árbol, `?categoryId` de una carpeta borrada da 404, y tampoco aparecería en la papelera. Por eso `remove()` toca las dos tablas:
+
+- En `SUBTREE`, la carpeta, su subárbol y sus documentos se marcan con **el mismo `deletedAt`**, dentro de una `$transaction`. Ese instante compartido **identifica el lote** y es lo que permite restaurarlo entero después. Detalle en `apps/api/src/trash/CLAUDE.md`.
+- En `SINGLE`, los documentos directos suben al padre de origen, igual que las subcarpetas.
+
+NORMA: el `deletedAt` se calcula **una vez** al principio del método y se reparte a todas las filas. No lo sustituyas por un `new Date()` por consulta: rompería el lote y la papelera dejaría de saber qué se borró junto.
 
 ### Prevención de ciclos
 
@@ -42,7 +51,7 @@ El motivo: una lista parcial dejaría posiciones duplicadas o huecos, y el orden
 
 ### Otras reglas
 
-- El borrado es **soft** (`deletedAt`), nunca físico. Toda consulta filtra `deletedAt: null`.
+- El borrado es **soft** (`deletedAt`), nunca físico **desde aquí**: el borrado definitivo vive en el módulo `trash`. Toda consulta de este módulo filtra `deletedAt: null`.
 - `nextPosition()` coloca lo nuevo al final de su nivel (`última + 1`, o 0 si está vacío).
 - `update()` es edición **en el sitio**: no cambia de carpeta padre. Para eso está `move`.
 - DEUDA (local): `create`, `update` y `move` devuelven la **entidad Prisma completa**, con `ownerId` y `deletedAt` incluidos. Solo `tree()` proyecta a un DTO limpio. El patrón correcto es el de `documents.service.ts`, con `select`.
@@ -95,8 +104,8 @@ El árbol se construye en memoria a partir de una consulta plana, y los contador
 4. **Mover en `SINGLE`** — la carpeta llega sola y **sus hijas quedan colgando del padre de origen**. Este es el caso que más se rompe.
 5. **Ciclo** — mover una carpeta dentro de su propia subcarpeta en modo `SUBTREE` → 400.
 6. **Auto-padre** — `parentId === id` → 400.
-7. **Borrar en `SUBTREE`** — `deleted` cuenta la carpeta más todos sus descendientes.
-8. **Borrar en `SINGLE`** — `deleted: 1` y las hijas suben.
+7. **Borrar en `SUBTREE`** — `deleted` cuenta la carpeta más todos sus descendientes, y **sus documentos se van a la papelera con ella** (comprobar que dejan de salir en `GET /api/documents` y en el buscador).
+8. **Borrar en `SINGLE`** — `deleted: 1`; las hijas **y los documentos directos** suben al padre.
 9. **Reorder correcto** — el nuevo orden se refleja en el árbol.
 10. **Reorder con lista incompleta, con un ID de otro nivel o con duplicados** → 400 en los tres casos.
 11. **Aislamiento** — con el token de otro usuario, cualquier operación sobre estas carpetas devuelve **404** (no 403).

@@ -137,31 +137,53 @@ export class CategoriesService {
 
   /**
    * Envia a la papelera (soft-delete).
-   * - SUBTREE: la carpeta y todo su subarbol.
-   * - SINGLE: solo esta carpeta; sus hijas directas suben al padre inmediato.
+   * - SUBTREE: la carpeta, todo su subarbol y **los documentos de todas ellas**.
+   * - SINGLE: solo esta carpeta; sus hijas directas **y sus documentos** suben
+   *   al padre inmediato.
+   *
+   * NORMA: ninguna de las dos vias puede dejar un documento vivo colgando de
+   * una carpeta borrada. Seria invisible: no esta en el arbol, `?categoryId`
+   * de una carpeta borrada da 404, y tampoco esta en la papelera.
+   *
+   * En SUBTREE, la carpeta y todo lo que se lleva consigo comparten el MISMO
+   * `deletedAt`. Ese instante identifica el lote y es lo que permite restaurar
+   * despues justo lo que se borro junto (ver el modulo `trash`).
    */
   async remove(ownerId: string, id: string, mode: TreeMode): Promise<{ deleted: number }> {
     const category = await this.assertOwned(ownerId, id);
+    const deletedAt = new Date();
 
     if (mode === TreeMode.SINGLE) {
-      await this.prisma.category.updateMany({
-        where: { parentId: id, ownerId, deletedAt: null },
-        data: { parentId: category.parentId },
-      });
-      await this.prisma.category.update({
-        where: { id: category.id },
-        data: { deletedAt: new Date() },
-      });
+      // Las hijas y los documentos directos suben al padre de origen; solo
+      // desaparece esta carpeta.
+      await this.prisma.$transaction([
+        this.prisma.category.updateMany({
+          where: { parentId: id, ownerId, deletedAt: null },
+          data: { parentId: category.parentId },
+        }),
+        this.prisma.document.updateMany({
+          where: { categoryId: id, ownerId, deletedAt: null },
+          data: { categoryId: category.parentId },
+        }),
+        this.prisma.category.update({ where: { id: category.id }, data: { deletedAt } }),
+      ]);
       return { deleted: 1 };
     }
 
     const ids = await this.descendantIds(ownerId, id);
     ids.add(id);
-    const result = await this.prisma.category.updateMany({
-      where: { id: { in: [...ids] }, ownerId, deletedAt: null },
-      data: { deletedAt: new Date() },
-    });
-    return { deleted: result.count };
+    const categoryIds = [...ids];
+    const [cats] = await this.prisma.$transaction([
+      this.prisma.category.updateMany({
+        where: { id: { in: categoryIds }, ownerId, deletedAt: null },
+        data: { deletedAt },
+      }),
+      this.prisma.document.updateMany({
+        where: { categoryId: { in: categoryIds }, ownerId, deletedAt: null },
+        data: { deletedAt },
+      }),
+    ]);
+    return { deleted: cats.count };
   }
 
   /** Reordena las carpetas hermanas de un nivel reasignando sus posiciones. */

@@ -86,6 +86,14 @@ export class EnvironmentVariables {
   @IsInt({ message: 'debe ser un numero entero de segundos' })
   @Min(1, { message: 'debe ser 1 o mayor' })
   THROTTLE_REGISTER_TTL?: number;
+
+  // Dias que algo aguanta en la papelera antes de que la tarea diaria lo borre
+  // definitivamente. Es un plazo de instalacion; el default (30) esta inline
+  // en trash-purge.service.ts.
+  @IsOptional()
+  @IsInt({ message: 'debe ser un numero entero de dias' })
+  @Min(1, { message: 'debe ser 1 o mayor' })
+  TRASH_RETENTION_DAYS?: number;
 }
 
 /**

@@ -23,7 +23,8 @@ Los campos exactos están en `apps/api/prisma/schema.prisma`, que es la **fuente
 ## Soft-delete y timestamps
 
 - NORMA: **`deletedAt DateTime?` existe solo en `Category` y `Document`.** El resto de modelos borra de verdad.
-- NORMA: en consecuencia, **toda lectura de categorías o documentos filtra `deletedAt: null`** en el `where`. Omitirlo devuelve elementos de la papelera.
+- NORMA: en consecuencia, **toda lectura de categorías o documentos filtra `deletedAt: null`** en el `where`. Omitirlo devuelve elementos de la papelera. La única excepción es el módulo `trash`, que es precisamente quien los busca.
+- NORMA: **el `deletedAt` de un borrado en cascada es un solo valor repartido a todas las filas**, no un `new Date()` por consulta. Ese instante compartido identifica el "lote" y es lo que permite restaurar justo lo que se borró junto (ver `apps/api/src/trash/CLAUDE.md`).
 - `updatedAt @updatedAt` solo en `User`, `Category`, `Document` y `Collective` — los modelos que se editan. Los demás solo llevan `createdAt`.
 - Todos los modelos tienen `createdAt DateTime @default(now())`.
 
@@ -35,7 +36,7 @@ Los campos exactos están en `apps/api/prisma/schema.prisma`, que es la **fuente
   - `Attachment.documentId → Document` — un adjunto sobrevive al documento que lo referenciaba.
 - Todas las FK son `ON UPDATE CASCADE`.
 
-> Ojo con la interacción entre el `Cascade` de la BD y el soft-delete de la aplicación: el borrado de carpetas que hace el servicio es **soft** (marca `deletedAt`), así que el `Cascade` de `Category.parentId` solo entra en juego si alguna vez se borra físicamente.
+> Ojo con la interacción entre el `Cascade` de la BD y el soft-delete de la aplicación: el borrado de carpetas que hace `categories.service.ts` es **soft** (marca `deletedAt`). El `Cascade` de `Category.parentId` solo entra en juego en el **borrado definitivo desde la papelera**, y ahí sí arrastra todos los descendientes de la BD, estén o no en el mismo lote.
 
 ## Índices
 

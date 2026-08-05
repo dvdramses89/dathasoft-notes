@@ -30,6 +30,8 @@ Dos excepciones reales, ambas deliberadas:
 - `health/` es un **controller sin módulo**: se declara directamente en `AppModule.controllers`.
 - `users/` es un **módulo sin controller**: solo expone `UsersService` para que lo consuma `AuthModule`. No tiene superficie HTTP propia.
 
+NORMA: **la única tarea programada de la API es la purga de la papelera**, y `ScheduleModule.forRoot()` se registra en `TrashModule`, no en `AppModule`. Si algún día hay una segunda, ese `forRoot()` sube a `AppModule`; mientras haya una sola, se queda con ella.
+
 ## TypeScript: strict parcial
 
 `apps/api/tsconfig.json` **no tiene `"strict": true`**. Activa a mano cinco flags y deja tres desactivados:
