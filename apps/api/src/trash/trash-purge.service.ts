@@ -1,10 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { TrashService } from './trash.service';
-
-/** Dias que algo aguanta en la papelera antes de borrarse solo. */
-const DEFAULT_RETENTION_DAYS = 30;
 
 /**
  * Vaciado automatico de la papelera. Una vez al dia borra definitivamente lo
@@ -18,23 +14,14 @@ const DEFAULT_RETENTION_DAYS = 30;
 export class TrashPurgeService {
   private readonly logger = new Logger(TrashPurgeService.name);
 
-  constructor(
-    private readonly trash: TrashService,
-    private readonly config: ConfigService,
-  ) {}
+  constructor(private readonly trash: TrashService) {}
 
   @Cron(CronExpression.EVERY_DAY_AT_3AM)
   async purge(): Promise<void> {
-    const days = this.retentionDays();
+    const days = this.trash.retentionDays();
     const { purged } = await this.trash.purgeOlderThan(days);
     if (purged > 0) {
       this.logger.log(`Papelera: ${purged} elemento(s) con mas de ${days} dias borrados`);
     }
-  }
-
-  /** El valor del .env, o 30. Un valor no valido o <= 0 cae al default. */
-  private retentionDays(): number {
-    const raw = Number(this.config.get<string>('TRASH_RETENTION_DAYS'));
-    return Number.isFinite(raw) && raw > 0 ? raw : DEFAULT_RETENTION_DAYS;
   }
 }

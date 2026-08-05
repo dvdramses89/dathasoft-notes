@@ -1,7 +1,17 @@
-import { Controller, Delete, Get, Param, ParseUUIDPipe, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import type { PublicUser } from '../auth/auth.service';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { TrashBatchDto } from './dto/trash-batch.dto';
 import { TrashService } from './trash.service';
 
 @UseGuards(JwtAuthGuard)
@@ -20,6 +30,21 @@ export class TrashController {
   @Delete()
   empty(@CurrentUser() user: PublicUser) {
     return this.trash.empty(user.id);
+  }
+
+  // POST /api/trash/restore -> restaura una seleccion entera de una vez
+  // (se declara ANTES de las rutas con parametro, por costumbre del proyecto)
+  @Post('restore')
+  restoreMany(@CurrentUser() user: PublicUser, @Body() dto: TrashBatchDto) {
+    return this.trash.restoreMany(user.id, dto);
+  }
+
+  // POST /api/trash/purge -> borra definitivamente una seleccion entera
+  // Es POST y no DELETE porque lleva body: un DELETE con cuerpo es legal pero
+  // lo tratan mal proxies y clientes, y aqui la seleccion puede ser larga.
+  @Post('purge')
+  purgeMany(@CurrentUser() user: PublicUser, @Body() dto: TrashBatchDto) {
+    return this.trash.purgeMany(user.id, dto);
   }
 
   // POST /api/trash/documents/:id/restore

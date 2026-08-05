@@ -5,6 +5,7 @@ import { CategoriesProvider } from '../categories/CategoriesContext';
 import { DocumentsProvider } from '../documents/DocumentsContext';
 import { FavoritesProvider } from '../favorites/FavoritesContext';
 import { TagsProvider } from '../tags/TagsContext';
+import { TrashProvider } from '../trash/TrashContext';
 import { AppHeader } from './AppHeader';
 import { Sidebar } from './Sidebar';
 
@@ -18,23 +19,25 @@ export function AppLayout() {
       <DocumentsProvider>
         <TagsProvider>
           <FavoritesProvider>
-            <AppShell
-              header={{ height: 52 }}
-              navbar={{ width: 276, breakpoint: 'sm', collapsed: { mobile: !opened } }}
-              padding="md"
-            >
-              <AppShell.Header className="app-header">
-                <AppHeader navbarOpened={opened} onToggleNavbar={toggle} />
-              </AppShell.Header>
+            <TrashProvider>
+              <AppShell
+                header={{ height: 52 }}
+                navbar={{ width: 276, breakpoint: 'sm', collapsed: { mobile: !opened } }}
+                padding="md"
+              >
+                <AppShell.Header className="app-header">
+                  <AppHeader navbarOpened={opened} onToggleNavbar={toggle} />
+                </AppShell.Header>
 
-              <AppShell.Navbar className="app-navbar" p="xs">
-                <Sidebar />
-              </AppShell.Navbar>
+                <AppShell.Navbar className="app-navbar" p="xs">
+                  <Sidebar />
+                </AppShell.Navbar>
 
-              <AppShell.Main className="app-main">
-                <Outlet />
-              </AppShell.Main>
-            </AppShell>
+                <AppShell.Main className="app-main">
+                  <Outlet />
+                </AppShell.Main>
+              </AppShell>
+            </TrashProvider>
           </FavoritesProvider>
         </TagsProvider>
       </DocumentsProvider>

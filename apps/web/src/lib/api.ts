@@ -373,4 +373,65 @@ export function removeFavorite(documentId: string): Promise<FavoriteState> {
   return request<FavoriteState>(`/documents/${documentId}/favorite`, { method: 'DELETE' });
 }
 
+// ---------------- Papelera ----------------
+
+/** Carpeta en la papelera. `contains` es lo que arrastra al restaurarse. */
+export interface TrashCategory {
+  id: string;
+  name: string;
+  icon: string | null;
+  color: string | null;
+  deletedAt: string;
+  contains: { categories: number; documents: number };
+}
+
+/** Documento en la papelera: solo lo justo para listarlo. */
+export interface TrashDocument {
+  id: string;
+  title: string;
+  deletedAt: string;
+}
+
+export interface TrashResult {
+  categories: TrashCategory[];
+  documents: TrashDocument[];
+  /** Días que algo aguanta en la papelera antes de la purga automática. */
+  retentionDays: number;
+}
+
+/** Selección sobre la que actúan las operaciones en lote. */
+export interface TrashSelection {
+  documentIds?: string[];
+  categoryIds?: string[];
+}
+
+/** Solo las raíces de cada borrado: una carpeta no lista lo que arrastra. */
+export function getTrash(): Promise<TrashResult> {
+  return request<TrashResult>('/trash');
+}
+
+/**
+ * Restaura una selección entera en una sola petición. Es estricta: si algún id
+ * ya no está en la papelera devuelve 404 y **no aplica nada**.
+ */
+export function restoreTrash(selection: TrashSelection): Promise<{ restored: number }> {
+  return request<{ restored: number }>('/trash/restore', {
+    method: 'POST',
+    body: JSON.stringify(selection),
+  });
+}
+
+/** Borrado definitivo de una selección entera. No tiene vuelta atrás. */
+export function purgeTrash(selection: TrashSelection): Promise<{ purged: number }> {
+  return request<{ purged: number }>('/trash/purge', {
+    method: 'POST',
+    body: JSON.stringify(selection),
+  });
+}
+
+/** Vacía la papelera entera. */
+export function emptyTrash(): Promise<{ purged: number }> {
+  return request<{ purged: number }>('/trash', { method: 'DELETE' });
+}
+
 export { API_URL };

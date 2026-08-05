@@ -29,12 +29,13 @@ import {
   IconTrash,
 } from '@tabler/icons-react';
 import { useEffect, useState, type DragEvent, type ReactNode } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useCategories } from '../categories/CategoriesContext';
 import { FolderIcon } from '../categories/folderIcons';
 import { useDocuments } from '../documents/DocumentsContext';
 import { useFavorites } from '../favorites/FavoritesContext';
 import { FavoritesSection } from '../favorites/FavoritesSection';
+import { useTrash } from '../trash/TrashContext';
 import type { CategoryNode, DocumentListItem, TreeMode } from '../lib/api';
 import { FolderFormModal, type FolderLook } from './FolderFormModal';
 import { MoveDocumentModal } from './MoveDocumentModal';
@@ -439,6 +440,7 @@ export function Sidebar() {
     byCategory,
     loadingKeys,
     loadFor,
+    refresh: refreshDocs,
     create: createDoc,
     rename: renameDoc,
     move: moveDoc,
@@ -446,8 +448,11 @@ export function Sidebar() {
     reorder: reorderDocs,
   } = useDocuments();
   const { reload: reloadFavorites } = useFavorites();
+  const { count: trashCount, reload: reloadTrash } = useTrash();
   const navigate = useNavigate();
   const { id: openDocId } = useParams();
+  const { pathname } = useLocation();
+  const onTrashPage = pathname === '/trash';
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [folderForm, setFolderForm] = useState<FolderForm | null>(null);
   const [busy, setBusy] = useState(false);
@@ -498,12 +503,14 @@ export function Sidebar() {
   }
 
   /**
-   * Selecciona una carpeta. Si había un documento abierto, se sale de su ruta
-   * para que deje de estar marcado: solo un nodo seleccionado a la vez.
+   * Selecciona una carpeta y lleva a la home, que es donde se ve su contenido.
+   * Hay que salir de cualquier otra ruta —un documento abierto, la papelera,
+   * el buscador—, o marcaríamos una carpeta sin enseñar lo que tiene y
+   * quedarían dos filas del sidebar resaltadas a la vez.
    */
   function selectCategory(id: string | null) {
     select(id);
-    if (openDocId) {
+    if (pathname !== '/') {
       navigate('/');
     }
   }
@@ -570,6 +577,7 @@ export function Sidebar() {
     await removeDoc(doc.id, doc.categoryId);
     await reloadTree(); // el contador de la carpeta baja
     await reloadFavorites(); // si era favorito, sale de la seccion
+    await reloadTrash(); // y entra en la papelera
     // Si el documento borrado era el que estaba abierto, salimos de su ruta.
     if (openDocId === doc.id) {
       navigate('/');
@@ -638,11 +646,18 @@ export function Sidebar() {
     }
   }
 
-  function confirmDelete(mode: TreeMode) {
-    if (deleteTarget) {
-      void remove(deleteTarget.id, mode);
-    }
+  async function confirmDelete(mode: TreeMode) {
+    const target = deleteTarget;
     setDeleteTarget(null);
+    if (!target) {
+      return;
+    }
+    await remove(target.id, mode);
+    // El listado del padre cambia en los dos modos: en `single` recibe los
+    // documentos que suben, y en `subtree` se van todos a la papelera.
+    await refreshDocs(target.parentId);
+    await reloadFavorites();
+    await reloadTrash();
   }
 
   // ---- Drag & drop para reordenar entre hermanas ----
@@ -715,7 +730,9 @@ export function Sidebar() {
       </Button>
 
       <div
-        className={`tree-row${selectedId === null && !openDocId ? ' tree-row--selected' : ''}`}
+        className={`tree-row${
+          selectedId === null && !openDocId && !onTrashPage ? ' tree-row--selected' : ''
+        }`}
         onClick={() => selectCategory(null)}
       >
         <span className="tree-chevron" />
@@ -828,6 +845,26 @@ export function Sidebar() {
         </Box>
       </ScrollArea>
 
+      {/* La papelera va al final: se usa poco y no debe competir con el árbol.
+          El ScrollArea de arriba crece, así que esta fila queda pegada abajo. */}
+      <Divider my={2} />
+      <div
+        className={`tree-row${onTrashPage ? ' tree-row--selected' : ''}`}
+        onClick={() => {
+          select(null);
+          navigate('/trash');
+        }}
+      >
+        <span className="tree-chevron" />
+        <IconTrash size={16} stroke={1.7} />
+        <span className="tree-row-name">Papelera</span>
+        {trashCount > 0 && (
+          <Text component="span" size="xs" c="dimmed" style={{ flex: 'none' }}>
+            {trashCount}
+          </Text>
+        )}
+      </div>
+
       {/* ---------------- Diálogos ---------------- */}
 
       {folderForm && (
@@ -863,13 +900,13 @@ export function Sidebar() {
             <Text size="sm">
               Esta carpeta contiene subcarpetas. ¿Qué quieres enviar a la papelera?
             </Text>
-            <Button variant="default" onClick={() => confirmDelete('single')}>
+            <Button variant="default" onClick={() => void confirmDelete('single')}>
               Solo esta carpeta
             </Button>
             <Text size="xs" c="dimmed" mt={-8}>
               Las subcarpetas suben al nivel superior
             </Text>
-            <Button color="red" onClick={() => confirmDelete('subtree')}>
+            <Button color="red" onClick={() => void confirmDelete('subtree')}>
               Esta carpeta y todo su contenido
             </Button>
             <Button variant="subtle" color="gray" onClick={() => setDeleteTarget(null)}>
@@ -883,7 +920,7 @@ export function Sidebar() {
               <Button variant="default" onClick={() => setDeleteTarget(null)}>
                 Cancelar
               </Button>
-              <Button color="red" onClick={() => confirmDelete('subtree')}>
+              <Button color="red" onClick={() => void confirmDelete('subtree')}>
                 Eliminar
               </Button>
             </Group>

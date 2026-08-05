@@ -41,6 +41,8 @@ App.tsx         Routes
 - Con un documento abierto la ruta es la de **su** carpeta; si no, la de la carpeta marcada en el árbol.
 - NORMA: el documento abierto llega por `current` de `DocumentsContext`, que **publica `DocumentPage` al cargarlo**. Es la única forma de tener título y carpeta cuando se ha entrado por una URL directa, sin pasar por ningún listado.
 - El interruptor de tema usa `useComputedColorScheme('light')` para **leer** y `setColorScheme` para **escribir** (ver la sección Tema de `.claude/rules/frontend.md`).
+- NORMA: **una pantalla que no es una carpeta cierra las migas con su propio tramo**, no pulsable y con la clase `crumb-current`. Lo hacen el documento abierto y la papelera («Mi espacio / 🗑 Papelera»). Sin eso, la cabecera diría «Mi espacio» mientras estás en otra pantalla.
+  > `/search` **todavía no lo hace**: sus migas dicen solo «Mi espacio». Es lo que queda de este patrón.
 - El **menú de cuenta** lleva la entrada «Etiquetas», que abre `TagsModal`. El estado del diálogo (`useState`) vive aquí, en el header: es el único sitio desde el que se abre.
 - El **campo de búsqueda** también vive aquí, y es el único de la app: `SearchPage` no tiene uno propio.
   - El texto es `useState` local, pero **la búsqueda es la URL**: Enter navega a `/search?q=…`, conservando los `tags` ya marcados. Un `useEffect` sincroniza el campo con `?q=` al entrar en `/search` y lo vacía al salir.
@@ -52,6 +54,10 @@ App.tsx         Routes
 El componente grande. Contiene el árbol de carpetas, los documentos de cada una, y todas sus acciones.
 
 Por encima del árbol monta **`<FavoritesSection/>`**, que vive en `apps/web/src/favorites/` y **se pinta sola solo si hay favoritos**. Está ahí y no dentro de este fichero a propósito: así el sidebar no gana ni un `useState` más (ver la DEUDA de estado más abajo).
+
+Debajo del árbol, **fuera del `ScrollArea`**, va la fila «Papelera» con su contador. Queda pegada abajo porque el `ScrollArea` de arriba es el que crece. Se usa poco y no debe competir con el árbol.
+
+NORMA: **`selectCategory()` navega a `/` siempre que no estemos ya ahí**, no solo cuando hay un documento abierto. Marcar una carpeta desde la papelera o el buscador sin salir de esa pantalla dejaba dos filas resaltadas y no enseñaba el contenido de la carpeta recién marcada.
 
 ### Patrones propios
 

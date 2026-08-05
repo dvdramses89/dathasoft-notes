@@ -18,9 +18,10 @@ src/
 ├── documents/    ← feature: DocumentEditor, DocumentsContext, codeBlock
 ├── tags/         ← feature: TagsContext, TagChips, TagPicker
 ├── favorites/    ← feature: FavoritesContext, FavoriteStar, FavoritesSection
+├── trash/        ← feature: TrashContext
 ├── components/   ← técnica: AppLayout, AppHeader, ProtectedRoute, Sidebar, modales
 ├── lib/          ← técnica: api.ts
-└── pages/        ← técnica: Home, Search, Document, Login, Register
+└── pages/        ← técnica: Home, Search, Trash, Document, Login, Register
 ```
 
 - NORMA: **no crear `hooks/`, `stores/`, `services/`, `types/` ni `features/`.** Los hooks viven junto a su Context, los tipos junto a su cliente API.
@@ -65,18 +66,20 @@ export function useCategories() {
 }
 ```
 
-Los cinco hooks (`useAuth`, `useCategories`, `useDocuments`, `useTags`, `useFavorites`) viven **junto a su Provider**, no en una carpeta `hooks/`.
+Los seis hooks (`useAuth`, `useCategories`, `useDocuments`, `useTags`, `useFavorites`, `useTrash`) viven **junto a su Provider**, no en una carpeta `hooks/`.
 
 Dónde se monta cada uno:
 
 - `MantineProvider` y `AuthContext` — en `main.tsx`, envuelven toda la app (las páginas de login las necesitan).
-- `CategoriesContext`, `DocumentsContext`, `TagsContext` y `FavoritesContext` — en `AppLayout`, es decir **dentro de la zona protegida**. No se cargan datos si no hay sesión.
+- `CategoriesContext`, `DocumentsContext`, `TagsContext`, `FavoritesContext` y `TrashContext` — en `AppLayout`, es decir **dentro de la zona protegida**. No se cargan datos si no hay sesión.
 
-Cada Context tiene su propia política de refresco, y las cuatro conviven a propósito: `CategoriesContext` **recarga el árbol entero** tras cada mutación, `DocumentsContext` hace **actualizaciones optimistas** sobre su cache, `TagsContext` recarga el catálogo (es pequeño) pero además ofrece `resolve()` para que los datos ya pintados no envejezcan, y `FavoritesContext` combina las dos: marca de forma optimista y recarga después.
+Cada Context tiene su propia política de refresco, y las cinco conviven a propósito: `CategoriesContext` **recarga el árbol entero** tras cada mutación, `DocumentsContext` hace **actualizaciones optimistas** sobre su cache, `TagsContext` recarga el catálogo (es pequeño) pero además ofrece `resolve()` para que los datos ya pintados no envejezcan, `FavoritesContext` combina las dos (marca de forma optimista y recarga después) y `TrashContext` recarga siempre, sin optimismo: restaurar mueve cosas de sitio y adivinar el resultado en local sería duplicar la lógica del servidor.
+
+NORMA: **borrar algo toca varios contextos a la vez.** Quien envía a la papelera un documento o una carpeta llama a `reloadTree()`, al `reload()` de favoritos y al de la papelera; y la pantalla de la papelera hace lo inverso al restaurar. No hay un bus de eventos: se llaman a mano, y es lo que hay que replicar al añadir otra vía de borrado.
 
 NORMA: **`TagsContext` y `FavoritesContext` son la fuente de verdad de lo suyo**, por encima de lo que traiga cada documento. `resolve(tags)` e `isFavorite(id, fallback)` existen para lo mismo: que un cambio se vea al instante en los listados ya cargados **sin volver a pedirlos**. El campo que viene con el documento solo se usa mientras el contexto no ha cargado. No añadas un refresco global a `DocumentsContext` para esto.
 
-DEUDA: los cinco hooks llevan `// eslint-disable-next-line react-refresh/only-export-components`, que hoy **no hace nada** porque no hay ESLint configurado. No los borres: volverían a hacer falta si algún día se añade.
+DEUDA: los seis hooks llevan `// eslint-disable-next-line react-refresh/only-export-components`, que hoy **no hace nada** porque no hay ESLint configurado. No los borres: volverían a hacer falta si algún día se añade.
 
 ## Cliente API
 

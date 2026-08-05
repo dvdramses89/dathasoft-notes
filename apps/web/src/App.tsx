@@ -7,6 +7,7 @@ import { HomePage } from './pages/HomePage';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { SearchPage } from './pages/SearchPage';
+import { TrashPage } from './pages/TrashPage';
 
 export function App() {
   const { user } = useAuth();
@@ -22,6 +23,7 @@ export function App() {
         <Route element={<AppLayout />}>
           <Route path="/" element={<HomePage />} />
           <Route path="/search" element={<SearchPage />} />
+          <Route path="/trash" element={<TrashPage />} />
           <Route path="/documents/:id" element={<DocumentPage />} />
         </Route>
       </Route>

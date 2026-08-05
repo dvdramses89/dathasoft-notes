@@ -21,6 +21,7 @@ import {
   IconSearch,
   IconSun,
   IconTags,
+  IconTrash,
 } from '@tabler/icons-react';
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
@@ -122,6 +123,19 @@ export function AppHeader({ navbarOpened, onToggleNavbar }: AppHeaderProps) {
       </Anchor>
     )),
   ];
+
+  // La papelera tambien cierra las migas: si no, la cabecera diria «Mi espacio»
+  // mientras estas en otra pantalla.
+  if (location.pathname === '/trash') {
+    crumbs.push(
+      <Group key="trash" gap={6} wrap="nowrap" className="crumb-current">
+        <IconTrash size={14} stroke={1.8} />
+        <Text size="sm" fw={500}>
+          Papelera
+        </Text>
+      </Group>,
+    );
+  }
 
   // El documento actual cierra las migas y no es pulsable: ya estas en el.
   if (current) {

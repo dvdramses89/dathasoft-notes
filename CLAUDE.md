@@ -90,6 +90,7 @@ dathasoft-notes/
 │           ├── documents/      ← DocumentEditor, DocumentsContext, codeBlock
 │           ├── tags/           ← TagsContext, TagChips, TagPicker
 │           ├── favorites/      ← FavoritesContext, FavoriteStar, FavoritesSection
+│           ├── trash/          ← TrashContext
 │           ├── components/     ← AppShell (layout + header), Sidebar, modales
 │           ├── lib/api.ts      ← cliente HTTP + tipos
 │           └── pages/
@@ -147,6 +148,7 @@ Se cargan **solas** al leer o editar un fichero de ese directorio, así que no o
 | `apps/web/src/documents/CLAUDE.md` | Editor BlockNote, autoguardado, cache de documentos |
 | `apps/web/src/tags/CLAUDE.md` | Catálogo de tags, `resolve()`, selector por nombre del documento |
 | `apps/web/src/favorites/CLAUDE.md` | Estrella, sección del sidebar, marca optimista y `isFavorite()` |
+| `apps/web/src/trash/CLAUDE.md` | Contador del sidebar, por qué no hay optimismo, quién avisa a quién |
 | `apps/web/src/components/CLAUDE.md` | Layout, rutas protegidas, Sidebar, drag & drop y diálogos |
 
 ## Git
@@ -173,7 +175,7 @@ Toda la configuración entorno-dependiente vive en ficheros `.env`. **Nunca se h
 
 ## Estado y documentos relacionados
 
-Fases **0-4 cerradas**, más el endurecimiento de seguridad de la **Fase 4.5** y el rediseño visual de la **Fase 4.6**. Cerrada también la **Fase 5** (tags + buscador global). En curso la **Fase 6**: los **favoritos** están completos (6.1) y la **API de la papelera** también (6.2.a); queda su interfaz (6.2.b).
+Fases **0-4 cerradas**, más el endurecimiento de seguridad de la **Fase 4.5** y el rediseño visual de la **Fase 4.6**. Cerradas también la **Fase 5** (tags + buscador global) y la **Fase 6** (favoritos + papelera). La siguiente es la **Fase 7** (referencias externas en los documentos).
 
 | Documento | Para qué |
 |---|---|
@@ -192,7 +194,7 @@ Fases **0-4 cerradas**, más el endurecimiento de seguridad de la **Fase 4.5** y
 - **Tags** transversales: se asignan escribiendo el nombre en el documento (se crean solos), se ven como chips en la vista de carpeta y se gestionan —nombre, color, eliminar— en el diálogo «Etiquetas» del menú de cuenta. — **[hecho]**
 - **Buscador global** en la cabecera (Ctrl+K): full-text de Postgres sobre título y contenido, ordenado por relevancia, combinable con **filtro por tags en modo Y**. La búsqueda vive en la URL (`/search?q=&tags=`). — **[hecho]**
 - **Favoritos** por usuario: estrella en la hoja del documento, en la vista de carpeta y en el menú del sidebar, con una sección «Favoritos» arriba del árbol que **solo aparece si hay alguno**, ordenada del último marcado al primero. — **[hecho]**
-- **Papelera** de documentos **y carpetas**: restaurar (una carpeta vuelve con todo lo que se borró con ella), borrar definitivo y vaciar. Lo que lleva más de 30 días se purga solo. — *API hecha (6.2.a); interfaz en la 6.2.b*
+- **Papelera** de documentos **y carpetas**, con su entrada al final del sidebar (con contador) y su página `/trash`: restaurar (una carpeta vuelve con todo lo que se borró con ella), eliminar definitivamente y vaciar, por elemento o en selección múltiple. Lo que lleva más de 30 días se purga solo. — **[hecho]**
 - **Referenciar fuentes** en los documentos mediante bloques custom: enlace web, embed de YouTube, documento interno y adjunto de archivo. — *[Fase 7]*
 - **Exportar** a Markdown y PDF; **importar** `.md` / `.txt` / `.docx` eligiendo carpeta destino. — *[Fase 8]*
 - **Colectivos**: agrupar usuarios y compartir con ellos documentos sueltos o carpetas enteras (comparte el subárbol), con permiso read/edit y sección "Documentos compartidos" en el sidebar. — *[Fase 9]*

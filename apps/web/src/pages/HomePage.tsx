@@ -36,6 +36,7 @@ import { FolderIcon } from '../categories/folderIcons';
 import { useDocuments } from '../documents/DocumentsContext';
 import { FavoriteStar } from '../favorites/FavoriteStar';
 import { useFavorites } from '../favorites/FavoritesContext';
+import { useTrash } from '../trash/TrashContext';
 import type { CategoryNode, DocumentListItem } from '../lib/api';
 import { TagChips } from '../tags/TagChips';
 import { DestinationPicker, type Destination } from '../components/DestinationPicker';
@@ -86,6 +87,7 @@ export function HomePage() {
     move: moveDoc,
   } = useDocuments();
   const { reload: reloadFavorites } = useFavorites();
+  const { reload: reloadTrash } = useTrash();
 
   const [view, setView] = useLocalStorage<ViewMode>({
     key: 'dtnotes_view_mode',
@@ -161,8 +163,10 @@ export function HomePage() {
         }
       }
       await reloadTree();
-      // Lo que se va a la papelera sale de la seccion de favoritos.
+      // Lo que se va a la papelera sale de la seccion de favoritos y entra en
+      // el contador de la papelera.
       await reloadFavorites();
+      await reloadTrash();
       setPicked([]);
       setBulkDelete(false);
     } finally {
