@@ -121,7 +121,7 @@ Repositorio remoto (ya creado): `https://github.com/dvdramses89/dathasoft-notes.
 > **Anotado para una fase futura (sin planificar todavía): sección de Configuración por usuario.** Entre otras opciones, permitirá que cada usuario decida cada cuánto se purga automáticamente su papelera. Hasta entonces el plazo es de instalación (`TRASH_RETENTION_DAYS`, 30 días).
 
 ## Fase 7 — Referencias externas en documentos
-- [ ] 7.1 Bloque custom BlockNote: **enlace web**.
+- [x] 7.1 Bloque custom BlockNote: **enlace web**. Se inserta desde el menú `/` (grupo «Referencias»), con formulario de URL + etiqueta y vista de tarjeta con hostname. Solo vive en `contentJson`: sin cambios en la API ni en el esquema. Verificado con Playwright: 18/18 comprobaciones sin errores de consola, incluida la cadena completa de buscabilidad (`extractText` → `contentText` → `searchVector` → buscador global) y que el texto escrito antes del `/` no se pierde.
 - [ ] 7.2 Bloque custom: **embed de YouTube**.
 - [ ] 7.3 Bloque custom: **referencia a documento interno** del repositorio.
 - [ ] 7.4 Bloque custom: **adjunto/referencia de archivo** (tabla `Attachment` + almacenamiento local vía `STORAGE_DRIVER=local`).

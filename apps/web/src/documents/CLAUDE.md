@@ -6,9 +6,10 @@ El módulo con más trampas del frontend. Casi todo lo que hay aquí resuelve un
 
 ```
 documents/
-├── DocumentEditor.tsx     ← el editor BlockNote + autoguardado
+├── DocumentEditor.tsx     ← el editor BlockNote + autoguardado + menu slash
 ├── DocumentsContext.tsx   ← cache de listados por carpeta
-└── codeBlock.ts           ← bloque de código con resaltado (shiki)
+├── codeBlock.ts           ← bloque de código con resaltado (shiki)
+└── webLinkBlock.tsx       ← bloque custom de referencia a una URL externa
 ```
 
 La página que los usa (`pages/DocumentPage.tsx`) vive fuera, pero varias reglas de aquí la afectan.
@@ -27,13 +28,14 @@ La página que los usa (`pages/DocumentPage.tsx`) vive fuera, pero varias reglas
   ```
   Nada de `theme="dark"` fijo: dejaría el editor descolgado del interruptor del header.
 - **No hay ningún paquete `@tiptap/*` instalado.** BlockNote usa TipTap/ProseMirror por debajo, pero el código **nunca toca esa API**. No importes de TipTap.
-- El schema parte de `defaultBlockSpecs` y **solo sustituye `codeBlock`**:
+- El schema parte de `defaultBlockSpecs`, **sustituye `codeBlock`** y **añade los bloques custom**:
   ```ts
   const schema = BlockNoteSchema.create({
-    blockSpecs: { ...defaultBlockSpecs, codeBlock: codeBlockSpec },
+    blockSpecs: { ...defaultBlockSpecs, codeBlock: codeBlockSpec, webLink: webLinkBlockSpec },
   });
   ```
   Se declara **a nivel de módulo**, fuera del componente: crearlo en cada render reinstanciaría el editor.
+- NORMA: **la clave del objeto tiene que ser igual que el `type` del config del bloque** (`webLink: webLinkBlockSpec` ↔ `type: 'webLink'`). Si no coinciden, el bloque no se resuelve y la inserción falla **en silencio**, sin excepción.
 - Locale español con `dictionary: es` de `@blocknote/core/locales`.
 - `initialContent: initialContent?.length ? initialContent : undefined` — un array vacío rompe el arranque del editor; tiene que ser `undefined`.
 
@@ -48,11 +50,48 @@ Cuatro piezas que trabajan juntas. Quitar cualquiera pierde datos:
 
 NORMA: si tocas el autoguardado, mantén las cuatro. El `useEffect` de cleanup depende solo de `[editor]` a propósito.
 
+### Bloques custom (`webLinkBlock.tsx`)
+
+El primero de los bloques de referencia de la Fase 7. Sirve de plantilla para los que faltan.
+
+- Se define con **`createReactBlockSpec`** de `@blocknote/react`, y `content: 'none'` porque no lleva texto editable: todo su estado son props (`url`, `caption`).
+- NORMA: **`createReactBlockSpec` devuelve una _factory_, no el `BlockSpec`.** Hay que invocarla:
+  ```ts
+  export const webLinkBlockSpec = createReactBlockSpec({ … }, { render: … })();
+  //                                                                        ^^ obligatorio
+  ```
+  Es distinto de `createCodeBlockSpec`, que devuelve el spec directamente. Olvidar el `()` no da error de tipos evidente pero deja el schema inservible.
+- NORMA: en un bloque `content: 'none'` con formulario propio, **cada `onKeyDown` hace `e.stopPropagation()`**. Sin eso BlockNote captura `Enter` y `Escape` como si fueran del editor y el formulario no puede usarlos.
+- El bloque **no toca la API ni el esquema**: se guarda dentro de `contentJson` como `{ type: 'webLink', props: { url, caption } }`, que para el backend es JSONB opaco. Los bloques de referencia que necesiten fila propia en la BD (el adjunto de la 7.4) son otra historia.
+- Cancelar distingue dos casos: si el bloque **nunca tuvo URL** se elimina con `removeBlocks` (era un bloque a medio crear); si ya la tenía, solo se revierten los borradores.
+
+### El menú slash es propio
+
+NORMA: el menú `/` **no es el de BlockNote**. `BlockNoteView` lleva `slashMenu={false}` y un `<SuggestionMenuController triggerCharacter="/">` como hijo, cuyo `getItems` compone `getDefaultReactSlashMenuItems(editor)` **más** los ítems de los bloques custom. Al añadir un bloque de referencia nuevo, su ítem se registra ahí, en el grupo «Referencias».
+
+- El filtrado por `query` se hace **a mano** sobre `title` y `aliases` porque la lista ya no es la de BlockNote.
+- NORMA: **el `onItemClick` inserta con `insertOrUpdateBlockForSlashMenu`** (de `@blocknote/core/extensions`), la misma función que usan los ítems por defecto:
+  ```ts
+  onItemClick: () => insertOrUpdateBlockForSlashMenu(editor, { type: 'webLink' }),
+  ```
+  Reutiliza el bloque actual si está vacío o solo tiene `/`, y **si ya tiene texto inserta debajo**. No lo sustituyas por `replaceBlocks`: escribir «Mira esto: /enlace» perdería el «Mira esto: ».
+
 ### `extractText()`
 
 Recorre bloques e inline content **recursivamente** (incluidos los hijos anidados y los nodos con contenido dentro, como enlaces) y devuelve el texto plano. Ese texto se manda como `contentText` y es lo que alimenta la columna `searchVector` de Postgres.
 
-NORMA: si añades un bloque custom con texto (Fase 7), **asegúrate de que `extractText` lo recorre**, o su contenido no será buscable.
+NORMA: **cada bloque custom nuevo necesita su rama en `extractText`**, o su contenido no será buscable. Los bloques `content: 'none'` no tienen texto que recorrer: se leen sus **props**. Así entra `webLink`:
+
+```ts
+if (block.type === 'webLink') {
+  const text = [caption, url].filter(Boolean).join(' ');   // "GitHub https://github.com"
+  if (text.trim()) lines.push(text);
+} else {
+  … fromInline(block.content)
+}
+```
+
+NORMA: la firma es **`extractText(blocks: readonly unknown[])`**, con un tipo `RawBlock` interno para leer las props. No es dejadez: el schema extendido produce `Block<CustomSchema>[]`, que TypeScript no considera asignable a `Block[]`. Por lo mismo, los tres puntos donde se llama a `onSaveRef.current()` castean con `as unknown as Block[]`. Si tipas el parámetro como `Block[]`, el `build:web` deja de compilar.
 
 ### Reglas que afectan a `DocumentPage`
 
@@ -102,4 +141,8 @@ Ninguna propia: el título se valida en el backend (1-200 caracteres) y el conte
 6. **Buscabilidad** — tras editar, comprobar en la BD que `contentText` refleja el texto plano, incluidos los bloques anidados.
 7. **Resaltado** — insertar un bloque de código, probar varios lenguajes y comprobar en la pestaña de red que el chunk de shiki se carga **aparte**, no en el bundle inicial.
 8. **Carga perezosa** — expandir una carpeta lanza **una sola** petición; colapsar y volver a expandir no lanza otra.
-9. **Consola limpia** en todo el recorrido.
+9. **Bloques custom** — teclear `/enlace`, insertarlo, guardar una URL y comprobar que la tarjeta muestra etiqueta y hostname; recargar y verificar que vuelven **las dos props**. Escape en un bloque recién creado lo elimina.
+10. **Texto previo** — escribir «Mira esto: » y luego `/enlace`: el texto **no** se pierde y el bloque entra debajo.
+11. **Consola limpia** en todo el recorrido.
+
+> Al automatizar esto con Playwright: **seleccionar el ítem del menú `/` con `Enter`, no con `click()`**. Los ítems hacen `preventDefault` en `mousedown` para no perder el foco del editor, así que un clic sintético cierra el menú sin ejecutar el `onItemClick` — y no lanza ningún error, así que parece que el bloque «no se renderiza». Conviene además escuchar `page.on('pageerror')`: `page.on('console')` no ve las excepciones no capturadas.

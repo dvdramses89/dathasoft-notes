@@ -87,7 +87,7 @@ dathasoft-notes/
 │           ├── main.tsx · App.tsx · index.css · theme.ts
 │           ├── auth/           ← AuthContext
 │           ├── categories/     ← CategoriesContext, folderIcons
-│           ├── documents/      ← DocumentEditor, DocumentsContext, codeBlock
+│           ├── documents/      ← DocumentEditor, DocumentsContext, codeBlock, webLinkBlock
 │           ├── tags/           ← TagsContext, TagChips, TagPicker
 │           ├── favorites/      ← FavoritesContext, FavoriteStar, FavoritesSection
 │           ├── trash/          ← TrashContext
@@ -175,7 +175,7 @@ Toda la configuración entorno-dependiente vive en ficheros `.env`. **Nunca se h
 
 ## Estado y documentos relacionados
 
-Fases **0-4 cerradas**, más el endurecimiento de seguridad de la **Fase 4.5** y el rediseño visual de la **Fase 4.6**. Cerradas también la **Fase 5** (tags + buscador global) y la **Fase 6** (favoritos + papelera). La siguiente es la **Fase 7** (referencias externas en los documentos).
+Fases **0-4 cerradas**, más el endurecimiento de seguridad de la **Fase 4.5** y el rediseño visual de la **Fase 4.6**. Cerradas también la **Fase 5** (tags + buscador global) y la **Fase 6** (favoritos + papelera). En curso la **Fase 7** (referencias externas en los documentos): hecho el bloque de enlace web, pendientes el embed de YouTube, la referencia interna y el adjunto.
 
 | Documento | Para qué |
 |---|---|
