@@ -9,7 +9,8 @@ documents/
 ├── DocumentEditor.tsx     ← el editor BlockNote + autoguardado + menu slash
 ├── DocumentsContext.tsx   ← cache de listados por carpeta
 ├── codeBlock.ts           ← bloque de código con resaltado (shiki)
-└── webLinkBlock.tsx       ← bloque custom de referencia a una URL externa
+├── webLinkBlock.tsx       ← bloque custom de referencia a una URL externa
+└── youtubeBlock.tsx       ← bloque custom de embed de YouTube (iframe)
 ```
 
 La página que los usa (`pages/DocumentPage.tsx`) vive fuera, pero varias reglas de aquí la afectan.
@@ -65,6 +66,23 @@ El primero de los bloques de referencia de la Fase 7. Sirve de plantilla para lo
 - El bloque **no toca la API ni el esquema**: se guarda dentro de `contentJson` como `{ type: 'webLink', props: { url, caption } }`, que para el backend es JSONB opaco. Los bloques de referencia que necesiten fila propia en la BD (el adjunto de la 7.4) son otra historia.
 - Cancelar distingue dos casos: si el bloque **nunca tuvo URL** se elimina con `removeBlocks` (era un bloque a medio crear); si ya la tenía, solo se revierten los borradores.
 
+### `youtubeBlock.tsx` — y por qué no vale el bloque `video`
+
+**Dato comprobado, para no repetir el análisis: el bloque `video` de BlockNote no puede incrustar YouTube.** Su `render` crea un `<video src>`, y la URL de YouTube devuelve HTML, no un fichero de vídeo, así que el navegador falla con `MEDIA_ELEMENT_ERROR: Format error` (code 4) y el reproductor se queda negro. BlockNote **no detecta proveedores**: nunca genera un `<iframe>`. De ahí este bloque aparte.
+
+- NORMA: **se guarda el `videoId`, no la URL.** Así lo persistido siempre es válido y el iframe se construye igual sea cual sea la variante que se pegó. `parseYoutubeUrl()` acepta `watch?v=`, `youtu.be/`, `/embed/`, `/shorts/`, `/live/`, los subdominios `m.` y `music.`, y el ID a pelo; además saca el segundo de inicio de `t=`/`start=`, en segundos o en formato `1h2m3s`.
+- NORMA: el iframe apunta a **`youtube-nocookie.com`**, que no deja cookies de seguimiento hasta que el usuario le da al play. No lo cambies al dominio normal.
+- Lleva `referrerPolicy="strict-origin-when-cross-origin"`, `loading="lazy"`, `allowFullScreen` y un `allow` acotado. **Sin `sandbox`**: el reproductor lo necesita para funcionar, y acotar el `allow` es lo que se puede hacer con un embed de tercero.
+- El `title` del iframe usa el título que puso el usuario; es el nombre accesible del reproductor.
+- NORMA: `w="100%"` en el `Paper` de los tres estados. **El `.bn-block-content` de BlockNote es un contenedor flex**, así que sin eso la tarjeta se encoge al ancho intrínseco del iframe (300 px) en lugar de ocupar la hoja. La proporción 16:9 la pone `<AspectRatio>` de Mantine, no CSS propio.
+- NORMA: **no pongas `userSelect: 'none'`** en el envoltorio del iframe. Impide que la selección abarque el bloque y entonces no hay forma de borrarlo con el teclado. `contentEditable={false}` sí, como hace el bloque nativo.
+
+Tres cosas que **son de BlockNote** y afectan igual al bloque de vídeo nativo y al `codeBlock`. No son defectos de estos bloques, así que no intentes arreglarlas aquí:
+
+1. **`Control+A` + `Delete` no borra un bloque `content:'none'`.** Sí lo hacen `Backspace` desde el inicio del párrafo siguiente y el menú lateral del bloque.
+2. **`Control+End` no lleva el cursor más allá** de uno de estos bloques: un `Enter` después crea el párrafo *encima*. Para escribir debajo se pulsa en el área final, el párrafo simulado que BlockNote pinta con `.bn-trailing-block` (la opción `trailingBlock` viene a `true`).
+3. Con el ratón **sobre el reproductor no aparece el menú lateral del bloque**: un iframe es un documento aparte y se queda los eventos. Aparece en la banda del título, y por eso conviene que la tarjeta la conserve.
+
 ### El menú slash es propio
 
 NORMA: el menú `/` **no es el de BlockNote**. `BlockNoteView` lleva `slashMenu={false}` y un `<SuggestionMenuController triggerCharacter="/">` como hijo, cuyo `getItems` compone `getDefaultReactSlashMenuItems(editor)` **más** los ítems de los bloques custom. Al añadir un bloque de referencia nuevo, su ítem se registra ahí, en el grupo «Referencias».
@@ -86,6 +104,8 @@ NORMA: **cada bloque custom nuevo necesita su rama en `extractText`**, o su cont
 if (block.type === 'webLink') {
   const text = [caption, url].filter(Boolean).join(' ');   // "GitHub https://github.com"
   if (text.trim()) lines.push(text);
+} else if (block.type === 'youtubeEmbed') {
+  … [caption, canonicalYoutubeUrl(videoId)]                // se guarda el id: la url se reconstruye
 } else {
   … fromInline(block.content)
 }
@@ -143,6 +163,8 @@ Ninguna propia: el título se valida en el backend (1-200 caracteres) y el conte
 8. **Carga perezosa** — expandir una carpeta lanza **una sola** petición; colapsar y volver a expandir no lanza otra.
 9. **Bloques custom** — teclear `/enlace`, insertarlo, guardar una URL y comprobar que la tarjeta muestra etiqueta y hostname; recargar y verificar que vuelven **las dos props**. Escape en un bloque recién creado lo elimina.
 10. **Texto previo** — escribir «Mira esto: » y luego `/enlace`: el texto **no** se pierde y el bloque entra debajo.
-11. **Consola limpia** en todo el recorrido.
+11. **Embed de YouTube** — pegar varias variantes de URL y comprobar que el `src` acaba en `youtube-nocookie.com/embed/<id>`, que el reproductor ocupa el ancho de la hoja en 16:9 y que una URL ajena da error sin cerrar el formulario.
+12. **Bloques de «Medios»** (Imagen, Vídeo, Audio, Archivo) — van **solo por URL**: el panel no ofrece «Subir» porque el editor no define `uploadFile`, y BlockNote oculta esa pestaña él solo. Si algún día se implementa la subida, hay que pasar `uploadFile` al crear el editor.
+13. **Consola limpia** en todo el recorrido.
 
 > Al automatizar esto con Playwright: **seleccionar el ítem del menú `/` con `Enter`, no con `click()`**. Los ítems hacen `preventDefault` en `mousedown` para no perder el foco del editor, así que un clic sintético cierra el menú sin ejecutar el `onItemClick` — y no lanza ningún error, así que parece que el bloque «no se renderiza». Conviene además escuchar `page.on('pageerror')`: `page.on('console')` no ve las excepciones no capturadas.

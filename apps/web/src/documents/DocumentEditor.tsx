@@ -7,17 +7,24 @@ import { es } from '@blocknote/core/locales';
 import { BlockNoteView } from '@blocknote/mantine';
 import { SuggestionMenuController, getDefaultReactSlashMenuItems, useCreateBlockNote } from '@blocknote/react';
 import { useComputedColorScheme } from '@mantine/core';
-import { IconWorld } from '@tabler/icons-react';
+import { IconBrandYoutube, IconWorld } from '@tabler/icons-react';
 import { useCallback, useEffect, useRef } from 'react';
 import { codeBlockSpec } from './codeBlock';
 import { webLinkBlockSpec } from './webLinkBlock';
+import { canonicalYoutubeUrl, youtubeBlockSpec } from './youtubeBlock';
 
 /**
- * Esquema por defecto, sustituyendo el bloque de codigo por el nuestro:
- * mismo bloque pero con resaltado de sintaxis multi-lenguaje (shiki).
+ * Esquema por defecto, sustituyendo el bloque de codigo por el nuestro (mismo
+ * bloque pero con resaltado multi-lenguaje via shiki) y anadiendo los bloques
+ * de referencia de la Fase 7.
  */
 const schema = BlockNoteSchema.create({
-  blockSpecs: { ...defaultBlockSpecs, codeBlock: codeBlockSpec, webLink: webLinkBlockSpec },
+  blockSpecs: {
+    ...defaultBlockSpecs,
+    codeBlock: codeBlockSpec,
+    webLink: webLinkBlockSpec,
+    youtubeEmbed: youtubeBlockSpec,
+  },
 });
 
 /** Milisegundos de inactividad antes de guardar automaticamente. */
@@ -62,6 +69,13 @@ function extractText(blocks: readonly unknown[]): string {
       if (block.type === 'webLink') {
         const url = String(block.props.url ?? '');
         const caption = String(block.props.caption ?? '');
+        const text = [caption, url].filter(Boolean).join(' ');
+        if (text.trim()) lines.push(text);
+      } else if (block.type === 'youtubeEmbed') {
+        // Se guarda el id, no la url, asi que para el buscador se reconstruye.
+        const videoId = String(block.props.videoId ?? '');
+        const caption = String(block.props.caption ?? '');
+        const url = videoId ? canonicalYoutubeUrl(videoId) : '';
         const text = [caption, url].filter(Boolean).join(' ');
         if (text.trim()) lines.push(text);
       } else {
@@ -154,7 +168,19 @@ export function DocumentEditor({ initialContent, onSave }: DocumentEditorProps) 
                 insertOrUpdateBlockForSlashMenu(editor, { type: 'webLink' });
               },
             };
-            const all = [...defaults, webLinkItem];
+            const youtubeItem = {
+              title: 'Vídeo de YouTube',
+              subtext: 'Incrusta el reproductor en el documento',
+              // "video" tambien lo lleva el bloque de video nativo, y esta bien
+              // que salgan los dos: son cosas distintas y el usuario elige.
+              aliases: ['youtube', 'yt', 'video', 'embed', 'tube'],
+              group: 'Referencias',
+              icon: <IconBrandYoutube size={18} />,
+              onItemClick: () => {
+                insertOrUpdateBlockForSlashMenu(editor, { type: 'youtubeEmbed' });
+              },
+            };
+            const all = [...defaults, webLinkItem, youtubeItem];
             if (!query) return all;
             const q = query.toLowerCase();
             return all.filter(

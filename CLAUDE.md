@@ -87,7 +87,7 @@ dathasoft-notes/
 │           ├── main.tsx · App.tsx · index.css · theme.ts
 │           ├── auth/           ← AuthContext
 │           ├── categories/     ← CategoriesContext, folderIcons
-│           ├── documents/      ← DocumentEditor, DocumentsContext, codeBlock, webLinkBlock
+│           ├── documents/      ← DocumentEditor, DocumentsContext, codeBlock, webLinkBlock, youtubeBlock
 │           ├── tags/           ← TagsContext, TagChips, TagPicker
 │           ├── favorites/      ← FavoritesContext, FavoriteStar, FavoritesSection
 │           ├── trash/          ← TrashContext
@@ -175,7 +175,7 @@ Toda la configuración entorno-dependiente vive en ficheros `.env`. **Nunca se h
 
 ## Estado y documentos relacionados
 
-Fases **0-4 cerradas**, más el endurecimiento de seguridad de la **Fase 4.5** y el rediseño visual de la **Fase 4.6**. Cerradas también la **Fase 5** (tags + buscador global) y la **Fase 6** (favoritos + papelera). En curso la **Fase 7** (referencias externas en los documentos): hecho el bloque de enlace web, pendientes el embed de YouTube, la referencia interna y el adjunto.
+Fases **0-4 cerradas**, más el endurecimiento de seguridad de la **Fase 4.5** y el rediseño visual de la **Fase 4.6**. Cerradas también la **Fase 5** (tags + buscador global) y la **Fase 6** (favoritos + papelera). En curso la **Fase 7** (referencias externas en los documentos): hechos los bloques de enlace web y de embed de YouTube, pendientes la referencia a documento interno y el adjunto de archivo.
 
 | Documento | Para qué |
 |---|---|
@@ -195,7 +195,8 @@ Fases **0-4 cerradas**, más el endurecimiento de seguridad de la **Fase 4.5** y
 - **Buscador global** en la cabecera (Ctrl+K): full-text de Postgres sobre título y contenido, ordenado por relevancia, combinable con **filtro por tags en modo Y**. La búsqueda vive en la URL (`/search?q=&tags=`). — **[hecho]**
 - **Favoritos** por usuario: estrella en la hoja del documento, en la vista de carpeta y en el menú del sidebar, con una sección «Favoritos» arriba del árbol que **solo aparece si hay alguno**, ordenada del último marcado al primero. — **[hecho]**
 - **Papelera** de documentos **y carpetas**, con su entrada al final del sidebar (con contador) y su página `/trash`: restaurar (una carpeta vuelve con todo lo que se borró con ella), eliminar definitivamente y vaciar, por elemento o en selección múltiple. Lo que lleva más de 30 días se purga solo. — **[hecho]**
-- **Referenciar fuentes** en los documentos mediante bloques custom: enlace web, embed de YouTube, documento interno y adjunto de archivo. — *[Fase 7]*
+- **Referenciar fuentes** en los documentos mediante bloques custom, insertables desde el menú `/` en el grupo «Referencias»: **enlace web** (tarjeta con etiqueta y dominio) y **embed de YouTube** (reproductor 16:9 incrustado, sobre `youtube-nocookie.com`) — **[hechos]**; documento interno y adjunto de archivo — *[fases 7.3 y 7.4]*.
+  - Los bloques nativos de **«Medios»** de BlockNote (imagen, vídeo, audio, archivo) funcionan **por URL**; la subida de ficheros llega con la 7.4.
 - **Exportar** a Markdown y PDF; **importar** `.md` / `.txt` / `.docx` eligiendo carpeta destino. — *[Fase 8]*
 - **Colectivos**: agrupar usuarios y compartir con ellos documentos sueltos o carpetas enteras (comparte el subárbol), con permiso read/edit y sección "Documentos compartidos" en el sidebar. — *[Fase 9]*
 

@@ -46,7 +46,8 @@ src/
 NORMA: **la UI se construye con Mantine** (`@mantine/core`). Antes de escribir un componente o una regla CSS, mira si Mantine ya lo trae.
 
 - `MantineProvider` envuelve toda la app en `main.tsx`, con el tema de `theme.ts`. El CSS de Mantine se importa **antes** de `index.css`, para que lo propio pueda ajustarlo.
-- En uso hoy: `AppShell`, `Modal`, `Menu`, `Button`, `ActionIcon`, `TextInput`, `PasswordInput`, `Autocomplete`, `Card`, `Paper`, `Badge`, `Chip`, `Checkbox`, `Radio`, `SegmentedControl`, `SimpleGrid`, `Stack`, `Group`, `Text`, `Title`, `Breadcrumbs`, `Anchor`, `Avatar`, `Tooltip`, `ScrollArea`, `Loader`, `Alert`, `Center`, `Box`, `Divider`, `ColorSwatch`, `CloseButton`, `UnstyledButton`.
+- En uso hoy: `AppShell`, `Modal`, `Menu`, `Button`, `ActionIcon`, `TextInput`, `PasswordInput`, `Autocomplete`, `Card`, `Paper`, `Badge`, `Chip`, `Checkbox`, `Radio`, `SegmentedControl`, `SimpleGrid`, `Stack`, `Group`, `Text`, `Title`, `Breadcrumbs`, `Anchor`, `Avatar`, `Tooltip`, `ScrollArea`, `Loader`, `Alert`, `Center`, `Box`, `Divider`, `ColorSwatch`, `CloseButton`, `UnstyledButton`, `AspectRatio`.
+  - `AspectRatio` sostiene el 16:9 del embed de YouTube. Es el ejemplo de la norma de arriba: la proporción se resuelve con el componente, **sin una regla nueva en `index.css`**.
 - De `@mantine/hooks` se usan `useDisclosure` (el sidebar plegable), `useLocalStorage` (el modo de vista recordado) y `useHotkeys` (el `Ctrl+K` que enfoca el buscador). Los demás están disponibles.
 - NORMA: **no se instalan más paquetes de Mantine** (`@mantine/form`, `@mantine/dates`, `@mantine/notifications`, `@mantine/spotlight`…) sin pedirlo. Solo están `core` y `hooks`.
 - NORMA: **no se envuelven los componentes de Mantine en componentes propios** (`<MyButton>`). Se usan directos, con sus props.
